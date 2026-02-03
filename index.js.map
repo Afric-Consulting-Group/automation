@@ -1,0 +1,91 @@
+{
+	"routes": [
+		{
+			"method": "GET",
+			"url": "/"
+		},
+		{
+			"method": "GET",
+			"url": "/api/status"
+		},
+		{
+			"method": "GET",
+			"url": "/api/stats"
+		},
+		{
+			"method": "GET",
+			"url": "/api/matches"
+		},
+		{
+			"method": "GET",
+			"url": "/api/matches/active"
+		},
+		{
+			"method": "GET",
+			"url": "/api/events/"
+		},
+		{
+			"method": "GET",
+			"url": "/api/logs/"
+		},
+		{
+			"method": "GET",
+			"url": "/api/config"
+		},
+		{
+			"method": "POST",
+			"url": "/api/config"
+		},
+		{
+			"method": "GET",
+			"url": "/api/templates"
+		},
+		{
+			"method": "GET",
+			"url": "/api/templates/{id}",
+			"params": "id:string"
+		},
+		{
+			"method": "POST",
+			"url": "/api/templates"
+		},
+		{
+			"method": "PUT",
+			"url": "/api/templates/{id}",
+			"params": "id:string"
+		},
+		{
+			"method": "DELETE",
+			"url": "/api/templates/{id}",
+			"params": "id:string"
+		},
+		{
+			"method": "POST",
+			"url": "/api/worker/pause"
+		},
+		{
+			"method": "POST",
+			"url": "/api/worker/resume"
+		},
+		{
+			"method": "POST",
+			"url": "/api/worker/restart"
+		},
+		{
+			"method": "POST",
+			"url": "/api/worker/reload"
+		},
+		{
+			"method": "GET",
+			"url": "/api/notifications"
+		},
+		{
+			"method": "POST",
+			"url": "/api/notifications/retry"
+		},
+		{
+			"method": "SOCKET",
+			"url": "/"
+		}
+	]
+}

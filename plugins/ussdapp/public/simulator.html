@@ -1,0 +1,96 @@
+<style>
+	/* The device with borders */
+	.smartphone {
+		position: relative;
+		width: 357px;
+		height: 693px;
+		margin: auto;
+		border: 16px black solid;
+		border-top-width: 60px;
+		border-bottom-width: 60px;
+		border-radius: 36px;
+	}
+	/* The horizontal line on the top of the device */
+	.smartphone:before {
+		content: '';
+		display: block;
+		width: 60px;
+		height: 5px;
+		position: absolute;
+		top: -30px;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		background: #333;
+		border-radius: 10px;
+	}
+
+	/* The circle on the bottom of the device */
+	.smartphone:after {
+		content: '';
+		display: block;
+		width: 35px;
+		height: 35px;
+		position: absolute;
+		left: 50%;
+		bottom: -65px;
+		transform: translate(-50%, -50%);
+		background: #333;
+		border-radius: 50%;
+	}
+	/* The screen (or content) of the device */
+	.smartphone .content {
+		width: 325px;
+		height: 575px;
+		background: white;
+	}
+</style>
+<ui-plugin>
+
+	<ui-component name="viewbox" path="common.page" config="parent:window;margin:60;scrollbarshadow:1;centered:1" class="invisible">
+
+		<div class="mt10">
+
+		<div class="smartphone">
+			<div class="content">
+				<ui-bind path="?.url" config="template" class="b">
+			<script type="text/html" >
+				 <iframe src="{{ value }}" style="width:100%;border:none;height:100%" />
+			</script>
+
+		</ui-bind>
+			</div>
+		</div>
+
+
+		</div>
+
+
+	</ui-component>
+
+</ui-plugin>
+
+<script>
+	PLUGIN(function(exports) {
+		exports.reload = function() {
+			var params = NAV.params;
+			var id = params[0];
+			BREADCRUMB.add('@(USSD Apps)', '../')('Simulator', NAV.url);
+			exports.refresh(id);
+		};
+		exports.refresh = function(id) {
+			exports.tapi('ussdapp_read/{0} ERROR'.format(id),function(response) {
+				response.url = response.url + '/serviceussd';
+				let len = response.ussdCode;
+				response.shortcode = response.ussdCode.substring(1, len - 1);
+				var query = QUERIFY(response);
+				var url = 'https://simulation.dev.acgvas.com/details'+ query;
+				console.log(url);
+				exports.set('url', url);
+			});
+
+
+		};
+
+	});
+
+</script>

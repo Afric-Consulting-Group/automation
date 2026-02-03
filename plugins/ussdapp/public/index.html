@@ -1,0 +1,265 @@
+<style>
+	.CLASS .ui-progress { background-color: #F0F0F0; border-radius: var(--radius); box-sizing: border-box; }
+	.CLASS .ui-progress div { background-size: 56px 56px; animation: progress 20s infinite linear forwards; margin-right: 30px; background-image: repeating-linear-gradient(45deg,#4285F4,#4285F4 10px,#4993E7 10px,#4993E7 20px); text-align: right; font-size: 10px; color: #FFFFFF; padding: 2px 5px 0 0; height: 18px; font-weight: bold; border-radius: 3px; min-width: 30px; }
+	.CLASS .ui-dark .ui-progress { background-color: #303030; }
+	.CLASS .status-badge { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: bold; text-transform: uppercase; }
+	.CLASS .status-running { background-color: #E8F5E9; color: #2E7D32; }
+	.CLASS .status-stopped { background-color: #FFEBEE; color: #C62828; }
+	.CLASS .status-unknown { background-color: #F5F5F5; color: #757575; }
+	.CLASS .btn-group { display: flex; gap: 5px; }
+
+	@keyframes progress {
+		from { background-position: 0% 0%; }
+		to { background-position: 100% 0%; }
+	}
+</style>
+
+<ui-plugin config="aclass:1">
+	<header>
+		<label><i class="ti ti-docker blue"></i>@(USSD Docker Apps)</label>
+		<div class="toolbar pin">
+			<button class="exec" data-exec="?/add"><i class="ti ti-plus mr5"></i>@(Deploy app)</button>
+			<button class="exec" data-exec="?/refresh"><i class="ti ti-refresh mr5"></i>@(Refresh)</button>
+			<button class="exec" data-exec="?/monitor"><i class="ti ti-activity mr5"></i>@(Monitor All)</button>
+		</div>
+	</header>
+	<ui-component name="importer" path="common.form" config="if:ussdappdata;url:/_ussdapp/forms/create.html;"></ui-component>
+	<ui-component name="importer" path="common.panel" config="if:pluginussdappdetail;url:/_ussdapp/detail.html;"></ui-component>
+	<ui-component name="datagrid" path="?.items" class="CLASS" config="margin:22;click:?/detail;checked:?.checked">
+		<script type="text/plain">
+            [
+                { name: 'name', text: '@(Name)', width: 150, template: '<strong>{{ name }}</strong>' },
+                { name: 'ussdCode', text: '@(USSD Code)', width: 120 },
+                { name: 'port', text: '@(Port)', width: 80 },
+                { name: 'url', text: '@(URL)', width: 250, template: '<a href="{{ url }}" target="_blank">{{ url }}</a>' },
+                { name: 'status', text: '@(Status)', width: 120, template: '{{ if status === "running" }}<span class="status-badge status-running"><i class="ti ti-circle-check"></i> Running</span> {{ fi }} {{ if  status === "stopped" }}<span class="status-badge status-stopped"><i class="ti ti-circle-x"></i> Stopped</span>{{ else }}<span class="status-badge status-unknown">Unknown</span>{{ fi }}' },
+                { name: 'dtcreated', text: '@(Created)', type: 'date', width: 140 },
+                { type: 'controls', width: 200, template: '<div class="btn-group">{{ if status === "running" }}<button class="exec" data-exec="?/stop" data-name="{{ name }}" title="Stop"><i class="ti ti-pause red"></i></button>{{ else }}<button class="exec" data-exec="?/start" data-name="{{ name }}" title="Start"><i class="ti ti-play-alt green"></i></button>{{ fi }}<button class="exec" data-exec="?/logs" data-name="{{ name }}" title="Logs"><i class="ti ti-file blue"></i></button><button class="exec" data-exec="?/stats" data-name="{{ name }}" title="Stats"><i class="ti ti-chart-bar orange"></i></button><button class="exec" data-exec="?/remove" data-name="{{ name }}" title="Delete"><i class="ti ti-trash red"></i></button></div>' }
+            ]
+		</script>
+	</ui-component>
+</ui-plugin>
+
+<script>
+	PLUGIN(function(exports) {
+
+		exports.reload = function() {
+			BREADCRUMB.add('Instances', NAV.url);
+			exports.refresh();
+		};
+
+		exports.refresh = function(el) {
+			el && el.find('i').aclass('ti-spin').rclass('ti-spin', 800);
+			exports.tapi('ussdapp_list', function(response) {
+				response.quicksort('dtcreated_desc');
+				exports.set('items @hideloading', response);
+			});
+		};
+
+		exports.add = function() {
+			SETTER('loading/show');
+			SET('ussdappdata', {});
+			SET('common.form @hideloading', 'ussdappdata');
+		};
+ 	exports.detail = function(row) {
+		console.log(row);
+        var windowId = 'detail-' + row.name;
+        // Fermer la fenêtre si elle existe déjà
+        exports.closeWindow(windowId);
+        var html = `
+            <div class="padding">
+                <div style="background:#F5F5F5;padding:15px;border-radius:8px;margin-bottom:15px;">
+                    <h3><i class="ti ti-server blue"></i> ${row.name}</h3>
+                    <p><strong>Status:</strong> <span style="display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px;background-color:${row.status === 'running' ? '#4CAF50' : '#F44336'};"></span>${row.status}</p>
+                    <p><strong>USSD Code:</strong> ${row.ussdCode}</p>
+                    <p><strong>Port:</strong> ${row.port}</p>
+                    <p><strong>URL:</strong> <a href="${row.url}" target="_blank">${row.url}</a></p>
+                    <p><strong>Container ID:</strong> <code>${row.containerId}</code></p>
+                    <p><strong>Created:</strong> ${new Date(row.createdAt).toLocaleString()}</p>
+                </div>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                    <button class="button button-small exec" data-exec="pluginussdapp/toggleInstance" data-name="${row.name}" data-window="${windowId}">
+                        <i class="ti ti-repeat"></i> Toggle Start/Stop
+                    </button>
+                    <button class="button button-small exec" data-exec="pluginussdapp/logs" data-name="${row.name}">
+                        <i class="ti ti-file-text blue"></i> View Logs
+                    </button>
+                    <button class="button button-small exec" data-exec="pluginussdapp/stats" data-name="${row.name}">
+                        <i class="ti ti-chart-bar orange"></i> View Stats
+                    </button>
+                    <button class="button button-small exec" data-exec="pluginussdapp/refreshStatus" data-name="${row.name}" data-window="${windowId}">
+                        <i class="ti ti-refresh green"></i> Refresh Status
+                    </button>
+ 					<button class="button button-small exec" data-exec="pluginussdapp/simulator" data-name="${row.name}" data-window="${windowId}">
+                        <i class="ti ti-phone green"></i> Simulateur
+                    </button>
+                    <button class="button button-small exec" data-exec="pluginussdapp/deleteInstance" data-name="${row.name}" data-window="${windowId}">
+                        <i class="ti ti-trash red"></i> Delete Instance
+                    </button>
+                </div>
+            </div>
+        `;
+
+        common.windows.push({
+            id: windowId,
+            offset: { x: 250 + (common.windows.length * 30), y: 100 + (common.windows.length * 30), width: 800, height: 500, minwidth: 600, minheight: 400 },
+            title: 'Instance: ' + row.name,
+            icon: 'ti-server',
+            html: html,
+            actions: { minimize: true, maximize: true, move: true, resize: true, close: true }
+        });
+        UPD('common.windows');
+    };
+		// exports.detail = async function(row) {
+			// var name = row.name;
+			// $('.virtualwire').rclass('hidden');
+			// SET('pluginussdappdetail', row);
+			// SET('common.panel', 'pluginussdappdetail');
+		// };
+
+
+
+		exports.start = function(el) {
+			var name = el.attrd('name');
+			EXEC('-approve/show', '@(Are you sure you want to start this instance?)', '@(Start)', function() {
+				exports.tapi('ussdapp_start/{name} ERROR'.args({ name: name }), function(response) {
+					exports.refresh();
+					EXEC('-notify/success', '@(Instance has been started.)');
+				});
+			});
+		};
+
+		exports.stop = function(el) {
+			var name = el.attrd('name');
+			EXEC('-approve/show', '@(Are you sure you want to stop this instance?)', '@(Stop)', function() {
+				exports.tapi('ussdapp_stop/{name} ERROR'.args({ name: name }), function(response) {
+					exports.refresh();
+					EXEC('-notify/success', '@(Instance has been stopped.)');
+				});
+			});
+		};
+
+		exports.stats = function(el) {
+        var name = el.attrd('name');
+        var windowId = 'stats-' + name + '-' + Date.now();
+
+        SETTER('loading/show');
+        exports.tapi('ussdapp_stats/{0} ERROR'.format(name), function(response) {
+            SETTER('loading/hide');
+            var html = '<div class="padding" style="font-size:14px;">';
+            html += '<div style="margin-bottom:15px;"><strong><i class="ti ti-cpu"></i> CPU:</strong> <span style="color:#4285F4;font-size:20px;font-weight:bold;">' + response.cpu + '</span></div>';
+            html += '<div style="margin-bottom:15px;"><strong><i class="ti ti-memory"></i> Memory:</strong> ' + response.memory + ' <span style="color:#F4B400;">(' + response.memoryPercent + ')</span></div>';
+            html += '<div style="margin-bottom:15px;"><strong><i class="ti ti-network"></i> Network I/O:</strong> ' + response.network + '</div>';
+            html += '<div><strong><i class="ti ti-database"></i> Block I/O:</strong> ' + response.block + '</div>';
+            html += '</div>';
+
+            common.windows.push({
+                id: windowId,
+                offset: { x: 300, y: 200, width: 600, height: 400, minwidth: 400, minheight: 300 },
+                title: 'Statistics: ' + name,
+                icon: 'ti-chart-bar',
+                html: html,
+                actions: { minimize: true, maximize: true, move: true, resize: true, close: true }
+            });
+            UPD('common.windows');
+        });
+    };
+
+
+		exports.remove = function(el) {
+			var name = el.attrd('name');
+			EXEC('-approve/show', '@(Are you sure you want to DELETE this instance? This action cannot be undone!)', '@(Delete)', function() {
+				exports.tapi('ussdapp_delete/{name} ERROR'.args({ name: name }), function(response) {
+					exports.refresh();
+					EXEC('-notify/success', '@(Instance has been deleted.)');
+				});
+			});
+		};
+
+		exports.monitor = function() {
+			SETTER('loading/show');
+			exports.tapi('ussdapp_monitor ERROR', function(response) {
+				SETTER('loading/hide');
+				exports.refresh();
+				EXEC('-notify/success', '@(All ussdapp have been monitored.)');
+			});
+		};
+
+
+		exports.closeWindow = function(windowId) {
+			var index = common.windows.findIndex(w => w.id === windowId);
+			if (index !== -1) {
+				common.windows.splice(index, 1);
+				UPD('common.windows');
+			}
+		};
+
+		exports.simulator = function(el) {
+			var id = el.attrd('name');
+			var windowId = el.attrd('window');
+			exports.closeWindow(windowId);
+			REDIRECT('/ussdapp/{0}/'.format(id));
+		};
+
+
+		exports.logs = function(el) {
+			var name = el.attrd('name');
+			var windowId = 'logs-' + name + '-' + Date.now();
+			SETTER('loading/show');
+			exports.tapi('ussdapp_logs/{0}?lines=200 ERROR'.format(name), function(response) {
+				SETTER('loading/hide');
+				var html = '<pre style="background:#000;color:#0f0;padding:15px;height:100%;overflow:auto;font-family:monospace;font-size:12px;margin:0;">' + response + '</pre>';
+				common.windows.push({
+					id: windowId,
+					offset: { x: 200, y: 150, width: 900, height: 600, minwidth: 600, minheight: 400 },
+					title: 'Logs: ' + name,
+					icon: 'ti-file-text',
+					html: html,
+					actions: { minimize: true, maximize: true, move: true, resize: true, close: true }
+				});
+				UPD('common.windows');
+			});
+		};
+		exports.refreshStatus = function(el) {
+			var name = el.attrd('name');
+			SETTER('loading/show');
+			exports.tapi('ussdapp_status/{0} ERROR'.format(name), function(response) {
+				SETTER('loading/hide');
+				exports.refresh();
+				exports.refreshDetailWindow(name);
+				EXEC('-notify/success', 'Status: ' + response.status);
+			});
+    };
+
+    exports.deleteInstance = function(el) {
+        var name = el.attrd('name');
+        var windowId = el.attrd('window');
+        EXEC('-approve/show', 'Are you sure you want to DELETE this instance? This action cannot be undone!', 'Delete', function() {
+            exports.tapi('ussdapp_delete/{0} ERROR'.format(name), function(response) {
+                EXEC('-notify/success', 'Instance deleted successfully');
+                exports.closeWindow(windowId);
+                exports.refresh();
+            });
+        });
+    };
+
+    exports.refreshDetailWindow = function(name) {
+        exports.tapi('ussdapp_read/{0}'.format(name), function(instance) {
+            exports.detail(instance);
+        });
+    };
+
+	exports.toggleInstance = function(el) {
+        var name = el.attrd('name');
+        var windowId = el.attrd('window');
+        exports.tapi('ussdapp_toggle/{0} ERROR'.format(name), function(response) {
+			console.log(response);
+            EXEC('-notify/{0}'.format(response.value == 'Opérateur acgtelecom1 démarré.' ? 'success' : 'warning'), response.value);
+            exports.refresh();
+            exports.refreshDetailWindow(name);
+        });
+    };
+		// Rafraîchir automatiquement toutes les 10 secondes
+		setInterval(exports.refresh, 10000);
+	});
+</script>

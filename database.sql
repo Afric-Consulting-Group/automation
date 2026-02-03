@@ -12,7 +12,7 @@ CREATE TABLE config (
 CREATE TABLE message_templates (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100) UNIQUE NOT NULL,
-    service VARCHAR(100) UNIQUE,
+    service VARCHAR(100),
     event_type VARCHAR(50) NOT NULL,
     template TEXT NOT NULL,
     description TEXT,

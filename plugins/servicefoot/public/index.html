@@ -1,0 +1,320 @@
+<style>
+	.CLASS .status-badge { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: bold; text-transform: uppercase; }
+	.CLASS .status-running { background-color: #E8F5E9; color: #2E7D32; }
+	.CLASS .status-stopped { background-color: #FFEBEE; color: #C62828; }
+	.CLASS .match-card { border: 1px solid #E0E0E0; border-radius: 8px; padding: 15px; margin-bottom: 10px; background: #FFF; }
+	.CLASS .match-header { display: flex; justify-content: space-between; font-size: 12px; color: #666; margin-bottom: 10px; border-bottom: 1px solid #F0F0F0; padding-bottom: 5px; }
+	.CLASS .match-teams { display: flex; align-items: center; justify-content: space-between; font-weight: bold; font-size: 16px; }
+	.CLASS .match-score { font-size: 20px; color: #2E7D32; }
+	.CLASS .stats-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+	.CLASS .stat-card { background: #F8F9FA; border-radius: 8px; padding: 15px; border-left: 4px solid #4285F4; }
+	.CLASS .stat-value { font-size: 24px; font-weight: bold; display: block; }
+	.CLASS .stat-label { font-size: 12px; color: #666; text-transform: uppercase; }
+</style>
+
+<ui-plugin config="aclass:1">
+	<header>
+		<label><i class="ti ti-pennant blue"></i>@(Football Service)</label>
+		<div class="toolbar pin">
+			<button class="exec" data-exec="?/refresh"><i class="ti ti-refresh mr5"></i>@(Refresh)</button>
+			<button class="exec" data-exec="?/templates"><i class="ti ti-template mr5"></i>@(Templates)</button>
+			<button class="exec" data-exec="?/logs"><i class="ti ti-file-text mr5"></i>@(Logs)</button>
+			<ui-bind path="?.worker_running" config="template">
+				<script type="text/plain">
+					{{ if value }}
+						<button class="exec" data-exec="?/stop_worker"><i class="ti ti-stop red mr5"></i>@(Stop Worker)</button>
+						<button class="exec" data-exec="?/restart_worker"><i class="ti ti-refresh orange mr5"></i>@(Restart Worker)</button>
+					{{ else }}
+						<button class="exec" data-exec="?/start_worker"><i class="ti ti-play green mr5"></i>@(Start Worker)</button>
+					{{ fi }}
+				</script>
+			</ui-bind>
+		</div>
+	</header>
+
+	<div class="padding">
+		<div class="stats-container">
+			<div class="stat-card">
+				<span class="stat-label">@(Matches Processed)</span>
+				<ui-bind path="?.stats.matchesProcessed" config="text" class="stat-value">0</ui-bind>
+			</div>
+			<div class="stat-card" style="border-left-color: #34A853;">
+				<span class="stat-label">@(Events Processed)</span>
+				<ui-bind path="?.stats.eventsProcessed" config="text" class="stat-value">0</ui-bind>
+			</div>
+			<div class="stat-card" style="border-left-color: #FBBC05;">
+				<span class="stat-label">@(Notifications Sent)</span>
+				<ui-bind path="?.stats.notificationsSent" config="text" class="stat-value">0</ui-bind>
+			</div>
+			<div class="stat-card" style="border-left-color: #EA4335;">
+				<span class="stat-label">@(Errors)</span>
+				<ui-bind path="?.stats.errors" config="text" class="stat-value">0</ui-bind>
+			</div>
+		</div>
+
+		<div class="row">
+			<div class="col-md-8">
+				<div class="caption"><i class="ti ti-calendar mr5"></i>@(Matches of the day)</div>
+				<ui-bind path="?.matches" config="template">
+					<script type="text/plain">
+						{{ if !value || !value.length }}
+							<div class="empty">@(No matches found for today)</div>
+						{{ else }}
+							{{ foreach m in value }}
+								<div class="match-card">
+									<div class="match-header">
+										<span><i class="ti ti-time mr5"></i>{{ m.time }}</span>
+										<span>{{ m.date | format('dd.MM.yyyy') }}</span>
+									</div>
+									<div class="match-teams">
+										<div style="flex:1">{{ m.home_name }}</div>
+										<div class="match-score">vs</div>
+										<div style="flex:1; text-align:right">{{ m.away_name }}</div>
+									</div>
+								</div>
+							{{ end }}
+						{{ fi }}
+					</script>
+				</ui-bind>
+			</div>
+			<div class="col-md-4">
+				<div class="caption"><i class="ti ti-bolt mr5"></i>@(Active Match)</div>
+				<ui-bind path="?.active_match" config="template">
+					<script type="text/plain">
+						{{ if !value }}
+							<div class="empty">@(No active match at the moment)</div>
+						{{ else }}
+							<div class="match-card" style="border-color: #4285F4; background: #E8F0FE;">
+								<div class="match-header" style="color: #4285F4">
+									<span><strong>LIVE: {{ value.time }}'</strong></span>
+									<span>{{ value.status }}</span>
+								</div>
+								<div class="match-teams">
+									<div style="flex:1">{{ value.home_name }}</div>
+									<div class="match-score">{{ value.score }}</div>
+									<div style="flex:1; text-align:right">{{ value.away_name }}</div>
+								</div>
+								<div style="margin-top:10px; text-align:center">
+									<button class="button button-small exec" data-exec="?/events" data-id="{{ value.id }}">@(View Events)</button>
+								</div>
+							</div>
+						{{ fi }}
+					</script>
+				</ui-bind>
+			</div>
+		</div>
+	</div>
+</ui-plugin>
+
+<script>
+	PLUGIN(function(exports) {
+
+		exports.reload = function() {
+			BREADCRUMB.add('Football Service', NAV.url);
+			exports.refresh();
+		};
+
+		exports.refresh = function() {
+			exports.tapi('servicefoot_worker_status', function(response) {
+				exports.set('worker_running', response.worker_running);
+				if (response.worker_running) {
+					exports.refresh_stats();
+					exports.refresh_matches();
+					exports.refresh_active_match();
+				}
+			});
+		};
+
+		exports.refresh_stats = function() {
+			exports.tapi('servicefoot_stats', function(response) {
+				if (response.success)
+					exports.set('stats', response.data);
+			});
+		};
+
+		exports.refresh_matches = function() {
+			exports.tapi('servicefoot_get_matches', function(response) {
+				if (response.success)
+					exports.set('matches', response.data);
+			});
+		};
+
+		exports.refresh_active_match = function() {
+			exports.tapi('servicefoot_get_active_match', function(response) {
+				if (response.success)
+					exports.set('active_match', response.data);
+			});
+		};
+
+		exports.start_worker = function() {
+			exports.tapi('servicefoot_start_worker', function(response) {
+				if (response.success) {
+					EXEC('-notify/success', response.message);
+					setTimeout(exports.refresh, 1000);
+				}
+			});
+		};
+
+		exports.stop_worker = function() {
+			EXEC('-approve/show', '@(Are you sure you want to stop the football worker?)', '@(Stop)', function() {
+				exports.tapi('servicefoot_stop_worker', function(response) {
+					if (response.success) {
+						EXEC('-notify/success', response.message);
+						exports.refresh();
+					}
+				});
+			});
+		};
+
+		exports.restart_worker = function() {
+			EXEC('-approve/show', '@(Are you sure you want to restart the football worker?)', '@(Restart)', function() {
+				exports.tapi('servicefoot_restart_worker', function(response) {
+					if (response.success) {
+						EXEC('-notify/success', response.message);
+						setTimeout(exports.refresh, 1000);
+					}
+				});
+			});
+		};
+
+		exports.logs = function() {
+			var windowId = 'foot-logs';
+			SETTER('loading/show');
+			exports.tapi('servicefoot_get_logs?limit=200', function(response) {
+				SETTER('loading/hide');
+				if (!response.success) return;
+				
+				var html = '<div style="background:#1e1e1e;color:#d4d4d4;padding:10px;font-family:monospace;font-size:12px;height:100%;overflow:auto;">';
+				response.data.forEach(function(log) {
+					var color = log.level === 'error' ? '#f44336' : log.level === 'warn' ? '#ff9800' : '#4caf50';
+					html += `<div><span style="color:#888">[${new Date(log.created_at).toLocaleString()}]</span> <span style="color:${color};font-weight:bold">[${log.level.toUpperCase()}]</span> ${log.message}</div>`;
+				});
+				html += '</div>';
+
+				common.windows.push({
+					id: windowId,
+					offset: { x: 200, y: 150, width: 900, height: 600, minwidth: 600, minheight: 400 },
+					title: 'Football Worker Logs',
+					icon: 'ti-file-text',
+					html: html,
+					actions: { minimize: true, maximize: true, move: true, resize: true, close: true }
+				});
+				UPD('common.windows');
+			});
+		};
+
+		exports.templates = function() {
+			var windowId = 'foot-templates';
+			SETTER('loading/show');
+			exports.tapi('servicefoot_get_templates', function(response) {
+				SETTER('loading/hide');
+				if (!response.success) return;
+
+				var html = '<div class="padding">';
+				html += '<table class="table table-bordered" style="width:100%">';
+				html += '<thead><tr><th>@(Name)</th><th>@(Event)</th><th>@(Actions)</th></tr></thead>';
+				html += '<tbody>';
+				response.data.forEach(function(t) {
+					html += `<tr><td>${t.name}</td><td>${t.event_type}</td><td><button class="button button-small exec" data-exec="pluginservicefoot/edit_template" data-id="${t.id}">@(Edit)</button></td></tr>`;
+				});
+				html += '</tbody></table></div>';
+
+				common.windows.push({
+					id: windowId,
+					offset: { x: 250, y: 200, width: 800, height: 500 },
+					title: 'Message Templates',
+					icon: 'ti-template',
+					html: html,
+					actions: { close: true, move: true, resize: true }
+				});
+				UPD('common.windows');
+			});
+		};
+
+		exports.edit_template = function(el) {
+			var id = el.attrd('id');
+			exports.tapi('servicefoot_get_template/{0}'.format(id), function(response) {
+				if (!response.success) return;
+				var t = response.data;
+				
+				var html = '<div class="padding">';
+				html += '<div class="m"><strong>@(Name)</strong><br><input type="text" class="input" style="width:100%" value="' + t.name + '" id="tpl_name"></div>';
+				html += '<div class="m"><strong>@(Event Type)</strong><br><input type="text" class="input" style="width:100%" value="' + t.event_type + '" id="tpl_event"></div>';
+				html += '<div class="m"><strong>@(Template Content)</strong><br><textarea class="input" style="width:100%;height:200px" id="tpl_content">' + t.template + '</textarea></div>';
+				html += '<div class="right"><button class="button exec" data-exec="pluginservicefoot/save_template" data-id="' + id + '">@(Save)</button></div>';
+				html += '</div>';
+
+				common.windows.push({
+					id: 'edit-template',
+					offset: { x: 300, y: 250, width: 600, height: 500 },
+					title: 'Edit Template: ' + t.name,
+					icon: 'ti-edit',
+					html: html,
+					actions: { close: true, move: true }
+				});
+				UPD('common.windows');
+			});
+		};
+
+		exports.save_template = function(el) {
+			var id = el.attrd('id');
+			var model = {
+				id: id,
+				name: $('#tpl_name').val(),
+				event_type: $('#tpl_event').val(),
+				content: $('#tpl_content').val()
+			};
+			
+			exports.tapi('servicefoot_save_template', model, function(response) {
+				if (response.success) {
+					EXEC('-notify/success', 'Template saved');
+					// Close edit window
+					var index = common.windows.findIndex(w => w.id === 'edit-template');
+					if (index !== -1) {
+						common.windows.splice(index, 1);
+						UPD('common.windows');
+					}
+					// Refresh list
+					exports.templates();
+				}
+			});
+		};
+
+		exports.events = function(el) {
+			var id = el.attrd('id');
+			SETTER('loading/show');
+			exports.tapi('servicefoot_get_match_events?match_id=' + id, function(response) {
+				SETTER('loading/hide');
+				if (!response.success) return;
+				
+				var html = '<div class="padding">';
+				if (!response.data.length) {
+					html += '<div class="empty">@(No events yet)</div>';
+				} else {
+					html += '<div style="max-height:400px; overflow:auto">';
+					response.data.forEach(function(e) {
+						html += `<div style="border-bottom:1px solid #F0F0F0; padding:10px 0;">
+							<strong>${e.time}'</strong> <span class="badge badge-blue">${e.event}</span> ${e.player || ''} 
+							<div style="font-size:11px; color:#888">${e.info || ''}</div>
+						</div>`;
+					});
+					html += '</div>';
+				}
+				html += '</div>';
+
+				common.windows.push({
+					id: 'match-events',
+					offset: { x: 400, y: 100, width: 400, height: 500 },
+					title: 'Match Events',
+					icon: 'ti-bolt',
+					html: html,
+					actions: { close: true, move: true }
+				});
+				UPD('common.windows');
+			});
+		};
+
+		// Auto refresh every 15 seconds
+		setInterval(exports.refresh, 15000);
+	});
+</script>

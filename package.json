@@ -10,6 +10,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "puppeteer": "^24.36.1",
     "querybuilderpg": "^1.0.24",
     "total5": "^0.0.15"
   }

@@ -1,14 +1,13 @@
-MAIN.footballWorker = null;
-MAIN.footballWorderLogs = [];
+MAIN.tvWorker = null;
 
 // create initWorker function
 function initWorker() {
-    if (MAIN.footballWorker) {
-        MAIN.footballWorker.terminate();
+    if (MAIN.tvWorker) {
+        MAIN.tvWorker.terminate();
     }
-    MAIN.footballWorker = NEWFORK('servicefoot');
+    MAIN.tvWorker = NEWFORK('tvprogram');
 
-    MAIN.footballWorker.on('message', (msg) => {
+    MAIN.tvWorker.on('message', (msg) => {
         // Broadcast to all WebSocket clients
         if (MAIN.wsConnections) {
             MAIN.wsConnections.forEach(client => {
@@ -16,26 +15,27 @@ function initWorker() {
             });
         }
     });
+
     // Initialize worker with database config
-    MAIN.footballWorker.postMessage({ 
+    MAIN.tvWorker.postMessage({ 
         command: 'init', 
         database: CONF.database 
     });
 }
 
-MAIN.initWorker = initWorker;
+MAIN.initTVWorker = initWorker;
 
 // Initialize the worker and database at startup
 ON('ready', async function() {
     try {
-        let table = await DATA.check('information_schema.tables').where('table_schema', 'public').where('table_name', 'matches').promise();
+        let table = await DATA.check('information_schema.tables').where('table_schema', 'public').where('table_name', 'tv_programs').promise();
         if (!table) {
             let sql = await Total.readfile(PATH.join(__dirname, '../db.sql'), 'utf8');
             await DATA.query(sql).promise();
-            console.log('✅ ServiceFoot database initialized');
+            console.log('✅ TVProgram database initialized');
         }
-        MAIN.initWorker();
+        MAIN.initTVWorker();
     } catch (e) {
-        console.error('❌ ServiceFoot initialization error:', e);
+        console.error('❌ TVProgram initialization error:', e);
     }
 });

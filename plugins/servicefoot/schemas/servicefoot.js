@@ -13,6 +13,7 @@ NEWSCHEMA('ServiceFoot', function (schema) {
     schema.action('stats', {
         name: 'Get Football Service Statistics',
         action: async function ($) {
+            if (!MAIN.footballWorker) return $.callback({ success: false, error: 'Worker is not running' });
             MAIN.footballWorker.postMessage({ command: 'get_stats' });
             // Wait for response
             const timeout = setTimeout(() => {
@@ -88,6 +89,7 @@ NEWSCHEMA('ServiceFoot', function (schema) {
         name: 'Get Football Matches',
         action: function ($) {
             const self = $;
+            if (!MAIN.footballWorker) return self.callback({ success: false, error: 'Worker is not running' });
             MAIN.footballWorker.postMessage({ command: 'get_matches' });    
             // Wait for response
             const timeout = setTimeout(() => {
@@ -110,6 +112,7 @@ NEWSCHEMA('ServiceFoot', function (schema) {
         name: 'Get Active Football Match',
         action: function ($) {  
             const self = $;
+            if (!MAIN.footballWorker) return self.callback({ success: false, error: 'Worker is not running' });
             MAIN.footballWorker.postMessage({ command: 'get_active_match' });
             // Wait for response
             const timeout = setTimeout(() => {
@@ -134,6 +137,7 @@ NEWSCHEMA('ServiceFoot', function (schema) {
         action: function ($) {
             const self = $;
             const matchId = $.query.match_id;
+            if (!MAIN.footballWorker) return self.callback({ success: false, error: 'Worker is not running' });
             MAIN.footballWorker.postMessage({ command: 'get_match_events', match_id: matchId });
             // Wait for response
             const timeout = setTimeout(() => {
@@ -159,6 +163,7 @@ NEWSCHEMA('ServiceFoot', function (schema) {
             const self = $;
             const level = $.query.level || 'info';
             const limit = $.query.limit || 100;
+            if (!MAIN.footballWorker) return self.callback({ success: false, error: 'Worker is not running' });
             MAIN.footballWorker.postMessage({ command: 'get_logs', level: level, limit: limit });   
             // Wait for response
             const timeout = setTimeout(() => {

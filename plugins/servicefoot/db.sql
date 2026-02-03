@@ -149,8 +149,8 @@ INSERT INTO config (name, value, description) VALUES
 ON CONFLICT (name) DO NOTHING;
 
 -- Insert default message templates
-INSERT INTO message_templates (name, event_type, template, description) VALUES
-    ('daily_matches', 'daily_summary', 
+INSERT INTO message_templates (name, service, event_type, template, description) VALUES
+    ('daily_matches', 'servicefoot', 'daily_summary', 
      '*** Service Foot ***
 CAN 2022
 Bonjour, les matchs du jour 
@@ -159,21 +159,21 @@ Bonjour, les matchs du jour
 @{end}', 
      'Daily matches summary'),
     
-    ('match_starting_soon', 'notstarted',
+    ('match_starting_soon', 'servicefoot', 'notstarted',
      '*** Service Foot ***
 CAN 2022
 Le match : @{model.home_name} vs @{model.away_name}
 Commence dans 5 minutes.',
      'Match starting in 5 minutes notification'),
     
-    ('match_started', 'started',
+    ('match_started', 'servicefoot', 'started',
      '*** Service Foot ***
 CAN 2022
 Le match : @{model.home_name} vs @{model.away_name} a commence.
 Score : @{model.score}',
      'Match started notification'),
     
-    ('added_time', 'addedtime',
+    ('added_time', 'servicefoot', 'addedtime',
      '*** Service Foot ***
 CAN 2022
 @{model.home_name} vs @{model.away_name}
@@ -181,7 +181,7 @@ TEMPS ADDITIONNEL
 score : @{model.score}',
      'Added time notification'),
     
-    ('halftime', 'halftime',
+    ('halftime', 'servicefoot', 'halftime',
      '*** Service Foot ***
 CAN 2022
 @{model.home_name} vs @{model.away_name}
@@ -189,7 +189,7 @@ MI-TEMPS
 score : @{model.score}',
      'Halftime notification'),
     
-    ('match_finished', 'finished',
+    ('match_finished', 'servicefoot', 'finished',
      '*** Service Foot ***
 CAN 2022
 @{model.home_name} vs @{model.away_name}
@@ -197,7 +197,7 @@ MATCH TERMINE
 score final : @{model.score}',
      'Match finished notification'),
     
-    ('goal', 'goal',
+    ('goal', 'servicefoot', 'goal',
      '*** Service Foot ***
 CAN 2022
 @{model.match.home_name} VS @{model.match.away_name}
@@ -208,7 +208,7 @@ Temps : @{model.time} eme minute
 Nouveau Score : @{model.match.score}',
      'Goal notification'),
     
-    ('goal_penalty', 'goalpenalty',
+    ('goal_penalty', 'servicefoot', 'goalpenalty',
      '*** Service Foot ***
 CAN 2022
 @{model.match.home_name} VS @{model.match.away_name}
@@ -219,7 +219,7 @@ Temps : @{model.time} eme minute
 Nouveau Score : @{model.match.score}',
      'Penalty goal notification'),
     
-    ('yellow_card', 'yellowcard',
+    ('yellow_card', 'servicefoot', 'yellowcard',
      '*** Service Foot ***
 CAN 2022
 @{model.match.home_name} VS @{model.match.away_name}
@@ -230,7 +230,7 @@ Temps : @{model.time} eme minute
 Nouveau Score : @{model.match.score}',
      'Yellow card notification'),
     
-    ('red_card', 'redcard',
+    ('red_card', 'servicefoot', 'redcard',
      '*** Service Foot ***
 @{model.match.home_name} VS @{model.match.away_name}
 @{if model.home_away === "h"} @{model.match.home_name} @{else} @{model.match.away_name} @{fi}* :
@@ -240,7 +240,7 @@ Temps : @{model.time} eme minute
 Nouveau Score : @{model.match.score}',
      'Red card notification'),
     
-    ('substitution', 'substitution',
+    ('substitution', 'servicefoot', 'substitution',
      '*** Service Foot ***
 CAN 2022
 @{model.match.home_name} VS @{model.match.away_name}
@@ -252,7 +252,7 @@ Temps : @{model.time} eme minute
 Nouveau Score : @{model.match.score}',
      'Substitution notification'),
     
-    ('data_unavailable', 'error',
+    ('data_unavailable', 'servicefoot', 'error',
      'LIVE SCORE API
 ----CAN 2022------
 Données indisponibles pour l''instant.

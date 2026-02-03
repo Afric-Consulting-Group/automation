@@ -593,6 +593,19 @@ async function queueNotification(templateName, data) {
     });
 }
 
+// Mark notification as sent in the database
+async function markNotificationSent(content) {
+    return new Promise((resolve, reject) => {
+        QB.modify('notification_queue', {
+            sent: true,
+            sent_at: new Date()
+        }).where('template', content).where('sent', false).callback((err, response) => {
+            if (err) return reject(err);
+            resolve(response);
+        });
+    });
+}
+
 // Send notification via SMS
 async function sendNotification(content) {
     try {
@@ -706,11 +719,39 @@ worker.message = async function(msg) {
                 worker.send({ type: 'stats', data: state.stats });
                 break;
                 
-            case 'get_active_matches':
+            case 'get_matches':
+                QB.find('matches')
+                    .where('date', new Date().format('yyyy-MM-dd'))
+                    .callback((err, response) => {
+                        worker.send({ type: 'matches', data: response || [] });
+                    });
+                break;
+
+            case 'get_active_match':
                 worker.send({ 
-                    type: 'active_matches', 
-                    data: Array.from(state.activeMatches.values()) 
+                    type: 'active_match', 
+                    data: Array.from(state.activeMatches.values())[0] || null 
                 });
+                break;
+
+            case 'get_match_events':
+                QB.find('live_events')
+                    .where('match_id', msg.match_id)
+                    .sort('sort_desc')
+                    .callback((err, response) => {
+                        worker.send({ type: 'match_events', match_id: msg.match_id, data: response || [] });
+                    });
+                break;
+
+            case 'get_logs':
+                QB.find('worker_logs')
+                    .where('worker_name', WORKER_NAME)
+                    .where('level', msg.level)
+                    .take(msg.limit)
+                    .sort('created_at_desc')
+                    .callback((err, response) => {
+                        worker.send({ type: 'logs', level: msg.level, data: response || [] });
+                    });
                 break;
                 
             default:

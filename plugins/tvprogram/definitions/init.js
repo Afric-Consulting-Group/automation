@@ -28,7 +28,7 @@ MAIN.initTVWorker = initWorker;
 // Initialize the worker and database at startup
 ON('ready', async function() {
     try {
-        let table = await DATA.check('information_schema.tables').where('table_schema', 'public').where('table_name', 'tv_programs').promise();
+        let table = await DATA.check('information_schema.tables').where('table_schema', 'public').where('table_name', 'tv_channels').promise();
         if (!table) {
             let sql = await Total.readfile(PATH.join(__dirname, '../db.sql'), 'utf8');
             await DATA.query(sql).promise();

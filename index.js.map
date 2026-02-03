@@ -1,91 +1,588 @@
 {
 	"routes": [
 		{
+			"method": "API",
+			"url": "/api/",
+			"id": "CL",
+			"name": "Codelists"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"id": "Account",
+			"name": "Read account information"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"id": "Ping"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"id": "Admin|read",
+			"name": "Read admin profile"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"id": "Admin|save",
+			"input": "*name,*login,password",
+			"name": "Save admin profile"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"id": "Admin|login",
+			"input": "*login,*password",
+			"name": "Login"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"id": "Logout"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"id": "servicefoot_worker_status",
+			"name": "Get Football Worker Status"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"id": "servicefoot_stats",
+			"name": "Get Football Service Statistics"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"id": "servicefoot_get_matches",
+			"name": "Get Football Matches"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"id": "servicefoot_get_active_match",
+			"name": "Get Active Football Match"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"id": "servicefoot_get_match_events",
+			"name": "Get Football Match Events",
+			"query": "match_id:String"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"id": "servicefoot_get_logs",
+			"name": "Get Football Service Logs",
+			"query": "level:String,limit:Number"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"id": "servicefoot_get_templates",
+			"name": "Get Football Service Templates",
+			"query": "search:String"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"id": "servicefoot_get_template",
+			"params": "id:string",
+			"name": "Get Football Service Template by ID"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"id": "servicefoot_save_template",
+			"input": "name:String, event_type:String, content:String",
+			"name": "Save Football Service Template"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"id": "servicefoot_remove_template",
+			"name": "Remove Football Service Template",
+			"query": "id:String"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"id": "servicefoot_start_worker",
+			"name": "Start Football Worker"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"id": "servicefoot_stop_worker",
+			"name": "Stop Football Worker"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"id": "servicefoot_restart_worker",
+			"name": "Restart Football Worker"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"id": "servicefoot_reload_worker",
+			"name": "Reload Football Worker"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"id": "Settings|read",
+			"name": "Read settings"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"id": "Settings|save",
+			"input": "name:String, url:URL, op:Boolean, op_reqtoken:String, op_restoken:String, totalapi:String, items:[*id:String, value:Object]",
+			"name": "Save settings"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"id": "tvprogram_worker_status",
+			"name": "Get TV Worker Status"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"id": "tvprogram_stats",
+			"name": "Get TV Service Statistics"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"id": "tvprogram_get_programs",
+			"name": "Get TV Programs",
+			"query": "channel_id:Number,date:Date"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"id": "tvprogram_get_channels",
+			"name": "Get TV Channels"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"id": "tvprogram_get_logs",
+			"name": "Get TV Service Logs",
+			"query": "level:String,limit:Number"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"id": "tvprogram_start_worker",
+			"name": "Start TV Worker"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"id": "tvprogram_stop_worker",
+			"name": "Stop TV Worker"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"id": "tvprogram_restart_worker",
+			"name": "Restart TV Worker"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"id": "tvprogram_scrape_now",
+			"name": "Trigger Scraping Now"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"id": "ussdapp_list",
+			"name": "List Instances",
+			"query": "search:String, status:String"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"params": "name:string",
+			"id": "ussdapp_read",
+			"name": "Read Instance"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"params": "name:string",
+			"id": "ussdapp_status",
+			"name": "Get Instance Status"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"params": "name:string",
+			"id": "ussdapp_logs",
+			"name": "Get Instance Logs"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"params": "name:string",
+			"id": "ussdapp_stats",
+			"name": "Get Instance Stats"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"id": "ussdapp_containers",
+			"name": "List All Docker Containers"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"id": "ussdapp_deploy",
+			"input": "*name:String, *port:Number, ussdCode:String",
+			"name": "Deploy Instance"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"params": "name:string",
+			"id": "ussdapp_start",
+			"name": "Start Instance"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"params": "name:string",
+			"id": "ussdapp_stop",
+			"name": "Stop Instance"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"params": "name:string",
+			"id": "ussdapp_toggle",
+			"name": "Toggle Instance"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"params": "name:string",
+			"id": "ussdapp_delete",
+			"name": "Delete Instance"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"id": "ussdapp_monitor",
+			"name": "Monitor All Instances"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"params": "name:string",
+			"id": "ussdapp_activate",
+			"name": "Start Instance"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"params": "name:string",
+			"id": "ussdapp_deactivate",
+			"name": "Stop Instance"
+		},
+		{
+			"method": "POST",
+			"url": "/api/pipe/",
+			"auth": 1
+		},
+		{},
+		{
+			"method": "GET",
+			"url": "/api/config"
+		},
+		{
+			"method": "POST",
+			"url": "/pipe/"
+		},
+		{
 			"method": "GET",
 			"url": "/"
-		},
-		{
-			"method": "GET",
-			"url": "/api/status"
-		},
-		{
-			"method": "GET",
-			"url": "/api/stats"
-		},
-		{
-			"method": "GET",
-			"url": "/api/matches"
-		},
-		{
-			"method": "GET",
-			"url": "/api/matches/active"
-		},
-		{
-			"method": "GET",
-			"url": "/api/events/"
-		},
-		{
-			"method": "GET",
-			"url": "/api/logs/"
-		},
-		{
-			"method": "GET",
-			"url": "/api/config"
-		},
-		{
-			"method": "POST",
-			"url": "/api/config"
-		},
-		{
-			"method": "GET",
-			"url": "/api/templates"
-		},
-		{
-			"method": "GET",
-			"url": "/api/templates/{id}",
-			"params": "id:string"
-		},
-		{
-			"method": "POST",
-			"url": "/api/templates"
-		},
-		{
-			"method": "PUT",
-			"url": "/api/templates/{id}",
-			"params": "id:string"
-		},
-		{
-			"method": "DELETE",
-			"url": "/api/templates/{id}",
-			"params": "id:string"
-		},
-		{
-			"method": "POST",
-			"url": "/api/worker/pause"
-		},
-		{
-			"method": "POST",
-			"url": "/api/worker/resume"
-		},
-		{
-			"method": "POST",
-			"url": "/api/worker/restart"
-		},
-		{
-			"method": "POST",
-			"url": "/api/worker/reload"
-		},
-		{
-			"method": "GET",
-			"url": "/api/notifications"
 		},
 		{
 			"method": "POST",
 			"url": "/api/notifications/retry"
 		},
 		{
+			"method": "POST",
+			"url": "/api/config"
+		},
+		{
+			"method": "GET",
+			"url": "/api/notifications"
+		},
+		{
+			"method": "GET",
+			"url": "/auth/",
+			"auth": 2
+		},
+		{
+			"method": "GET",
+			"url": "/*",
+			"auth": 1
+		},
+		{
+			"method": "GET",
+			"url": "/*",
+			"auth": 2
+		},
+		{
 			"method": "SOCKET",
 			"url": "/"
+		}
+	],
+	"plugins": [
+		{
+			"id": "account",
+			"name": "@(Account)"
+		},
+		{
+			"id": "servicefoot",
+			"name": "@(Football Service)",
+			"permissions": "servicefoot"
+		},
+		{
+			"id": "settings",
+			"name": "@(Settings)",
+			"permissions": "settings"
+		},
+		{
+			"id": "tvprogram",
+			"name": "@(TV Program)",
+			"permissions": "tvprogram"
+		},
+		{
+			"id": "ussdapp",
+			"name": "@(USSD Apps)",
+			"permissions": "ussdapp"
+		}
+	],
+	"actions": [
+		{
+			"name": "CL",
+			"user": true
+		},
+		{
+			"name": "Account",
+			"user": true
+		},
+		{
+			"name": "Ping"
+		},
+		{
+			"name": "API",
+			"input": "*schema,data:object",
+			"user": true
+		},
+		{
+			"name": "Admin|read",
+			"user": true
+		},
+		{
+			"name": "Admin|save",
+			"input": "*name,*login,password",
+			"user": true
+		},
+		{
+			"name": "Admin|login",
+			"input": "*login,*password"
+		},
+		{
+			"name": "Logout",
+			"user": true
+		},
+		{
+			"name": "ServiceFoot/worker_status"
+		},
+		{
+			"name": "ServiceFoot/stats"
+		},
+		{
+			"name": "ServiceFoot/restart_worker"
+		},
+		{
+			"name": "ServiceFoot/stop_worker"
+		},
+		{
+			"name": "ServiceFoot/start_worker"
+		},
+		{
+			"name": "ServiceFoot/reload_worker"
+		},
+		{
+			"name": "ServiceFoot/get_matches"
+		},
+		{
+			"name": "ServiceFoot/get_active_match"
+		},
+		{
+			"name": "ServiceFoot/get_match_events",
+			"query": "match_id:String"
+		},
+		{
+			"name": "ServiceFoot/get_logs",
+			"query": "level:String,limit:Number"
+		},
+		{
+			"name": "ServiceFoot/get_templates",
+			"query": "search:String"
+		},
+		{
+			"name": "ServiceFoot/get_template",
+			"params": "*id:String"
+		},
+		{
+			"name": "ServiceFoot/get_template_by_event",
+			"params": "*event_type:String"
+		},
+		{
+			"name": "ServiceFoot/save_template",
+			"input": "name:String, event_type:String, content:String"
+		},
+		{
+			"name": "ServiceFoot/remove_template",
+			"query": "id:String"
+		},
+		{
+			"name": "Settings|read",
+			"user": true,
+			"permissions": "settings"
+		},
+		{
+			"name": "Settings|save",
+			"input": "name:String, url:URL, op:Boolean, op_reqtoken:String, op_restoken:String, totalapi:String, items:[*id:String, value:Object]",
+			"user": true,
+			"permissions": "settings"
+		},
+		{
+			"name": "TVProgram/worker_status"
+		},
+		{
+			"name": "TVProgram/stats"
+		},
+		{
+			"name": "TVProgram/restart_worker"
+		},
+		{
+			"name": "TVProgram/stop_worker"
+		},
+		{
+			"name": "TVProgram/start_worker"
+		},
+		{
+			"name": "TVProgram/scrape_now"
+		},
+		{
+			"name": "TVProgram/get_channels"
+		},
+		{
+			"name": "TVProgram/get_programs",
+			"query": "channel_id:Number,date:Date"
+		},
+		{
+			"name": "TVProgram/get_logs",
+			"query": "level:String,limit:Number"
+		},
+		{
+			"name": "USSDApp/list",
+			"query": "search:String, status:String"
+		},
+		{
+			"name": "USSDApp/read",
+			"params": "*name:String"
+		},
+		{
+			"name": "USSDApp/deploy",
+			"input": "*name:String, *port:Number, ussdCode:String"
+		},
+		{
+			"name": "USSDApp/start",
+			"params": "*name:String"
+		},
+		{
+			"name": "USSDApp/stop",
+			"params": "*name:String"
+		},
+		{
+			"name": "USSDApp/toggle",
+			"params": "*name:String"
+		},
+		{
+			"name": "USSDApp/delete",
+			"params": "*name:String"
+		},
+		{
+			"name": "USSDApp/status",
+			"params": "*name:String"
+		},
+		{
+			"name": "USSDApp/logs",
+			"params": "*name:String, lines:Number"
+		},
+		{
+			"name": "USSDApp/stats",
+			"params": "*name:String"
+		},
+		{
+			"name": "USSDApp/monitor"
+		},
+		{
+			"name": "USSDApp/containers"
 		}
 	]
 }

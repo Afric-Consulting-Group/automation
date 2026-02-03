@@ -1,13 +1,16 @@
 -- TV Channels
-CREATE TABLE tv_channels (
+CREATE TABLE IF NOT EXISTS tv_channels (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) UNIQUE NOT NULL,
     icon VARCHAR(255),
+    source_id VARCHAR(100), -- ID used by the source (e.g., 205, 201)
+    source_type VARCHAR(50), -- 'canalplus' or 'arte'
+    group_name VARCHAR(100), -- e.g., PROGRAMME_TV_AUTRES
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- TV Programs
-CREATE TABLE tv_programs (
+CREATE TABLE IF NOT EXISTS tv_programs (
     id SERIAL PRIMARY KEY,
     channel_id INTEGER REFERENCES tv_channels(id) ON DELETE CASCADE,
     title VARCHAR(255) NOT NULL,
@@ -19,15 +22,44 @@ CREATE TABLE tv_programs (
     external_id VARCHAR(100),
     date DATE NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(channel_id, start_time, title)
+    UNIQUE(channel_id, start_time)
+);
+
+-- Worker logs (copied from servicefoot structure)
+CREATE TABLE IF NOT EXISTS tv_worker_logs (
+    id SERIAL PRIMARY KEY,
+    worker_name VARCHAR(50) NOT NULL,
+    event_type VARCHAR(50) NOT NULL,
+    message TEXT,
+    data JSONB,
+    level VARCHAR(20),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Create index for faster queries
 CREATE INDEX idx_tv_programs_date ON tv_programs(date);
 CREATE INDEX idx_tv_programs_channel ON tv_programs(channel_id);
+CREATE INDEX idx_tv_worker_logs_created_at ON tv_worker_logs(created_at DESC);
 
 -- Default configuration for TV Program plugin
 INSERT INTO config (name, value, description) VALUES
-    ('tvprogram_url', 'https://www.canalplus.com/bf/programme-tv/', 'Canal+ TV Program URL'),
+    ('tvprogram_url_canal', 'https://www.canalplus.com/bf/programme-tv/', 'Canal+ TV Program URL'),
+    ('tvprogram_url_arte', 'https://www.arte.tv/fr/guide/', 'Arte TV Program URL'),
     ('tvprogram_interval', '3600000', 'TV Program scrape interval in ms (default 1 hour)'),
-    ('tvprogram_power', 'on', 'Master switch for TV Program scraper');
+    ('tvprogram_power', 'on', 'Master switch for TV Program scraper')
+ON CONFLICT (name) DO NOTHING;
+
+-- Insert Channels
+INSERT INTO tv_channels (name, source_id, source_type, group_name) VALUES
+    ('Tv France 3', '205', 'canalplus', 'PROGRAMME_TV_AUTRES'),
+    ('Tv tf1', '201', 'canalplus', 'PROGRAMME_TV_AUTRES'),
+    ('Tv France 2', '203', 'canalplus', 'PROGRAMME_TV_AUTRES'),
+    ('Tv canal +', '206', 'canalplus', 'PROGRAMME_TV_AUTRES'),
+    ('Tv Itele', '202', 'canalplus', 'PROGRAMME_TV_AUTRES'),
+    ('Tv France 5', '204', 'canalplus', 'PROGRAMME_TV_AUTRES'),
+    ('Tv canal3', '183', 'canalplus', 'PROGRAMME_TV_BURKINABE'),
+    ('Tv arte', '207', 'arte', 'PROGRAMME_TV_AUTRES')
+ON CONFLICT (name) DO UPDATE SET 
+    source_id = EXCLUDED.source_id,
+    source_type = EXCLUDED.source_type,
+    group_name = EXCLUDED.group_name;

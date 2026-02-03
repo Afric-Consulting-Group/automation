@@ -1,4 +1,5 @@
 NEWSCHEMA('TVProgram', function (schema) {
+
     schema.action('worker_status', {
         name: 'Get TV Worker Status',
         action: function ($) {
@@ -13,7 +14,7 @@ NEWSCHEMA('TVProgram', function (schema) {
         action: async function ($) {
             if (!MAIN.tvWorker) return $.callback({ success: false, error: 'Worker is not running' });
             MAIN.tvWorker.postMessage({ command: 'get_stats' });
-            
+
             const timeout = setTimeout(() => {
                 MAIN.tvWorker.off('message', handler);
                 $.callback({ success: false, error: 'Timeout waiting for TV worker response' });
@@ -48,19 +49,19 @@ NEWSCHEMA('TVProgram', function (schema) {
                 $.callback({ success: true, message: 'Worker stopped' });
             } else {
                 $.callback({ success: false, message: 'Worker is not running' });
-            }   
+            }
         }
     });
 
     schema.action('start_worker', {
         name: 'Start TV Worker',
-        action: function ($) {  
+        action: function ($) {
             if (!MAIN.tvWorker) {
                 MAIN.initTVWorker();
                 $.callback({ success: true, message: 'Worker started' });
             } else {
                 $.callback({ success: false, message: 'Worker is already running' });
-            }   
+            }
         }
     });
 
@@ -85,10 +86,10 @@ NEWSCHEMA('TVProgram', function (schema) {
         query: 'channel_id:Number,date:Date',
         action: function ($) {
             let builder = QB.find('tv_programs');
-            
+
             if ($.query.channel_id)
                 builder.where('channel_id', $.query.channel_id);
-            
+
             if ($.query.date)
                 builder.where('date', $.query.date);
             else
@@ -104,11 +105,11 @@ NEWSCHEMA('TVProgram', function (schema) {
         action: function ($) {
             const level = $.query.level || 'info';
             const limit = $.query.limit || 100;
-            
+
             if (!MAIN.tvWorker) return $.callback({ success: false, error: 'Worker is not running' });
-            
+
             MAIN.tvWorker.postMessage({ command: 'get_logs', level: level, limit: limit });
-            
+
             const timeout = setTimeout(() => {
                 MAIN.tvWorker.off('message', handler);
                 $.callback({ success: false, error: 'Timeout waiting for TV worker response' });

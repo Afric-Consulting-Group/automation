@@ -1,5 +1,5 @@
 name                : Football Live Score Monitor
 version             : 1.0.0
-database            : postgres://postgres:Louis14@@localhost:5432/automationapp
+database            : postgres://total:platform@localhost:5432/automationapp
 secret            (generate)  : 10
 

@@ -5,11 +5,17 @@ exports.permissions = [{ id: 'tvprogram', name: 'TV Program' }];
 exports.visible = user => user.sa || user.permissions.includes('tvprogram');
 
 exports.install = function() {
+    ROUTE('/tvprogram/', 'index');
+
     ROUTE('+API  ?    -tvprogram_worker_status      --> TVProgram/worker_status');
     ROUTE('+API  ?    -tvprogram_stats              --> TVProgram/stats');
     ROUTE('+API  ?    -tvprogram_get_programs       --> TVProgram/get_programs');
     ROUTE('+API  ?    -tvprogram_get_channels       --> TVProgram/get_channels');
     ROUTE('+API  ?    -tvprogram_get_logs           --> TVProgram/get_logs');
+    ROUTE('+API  ?    -tvprogram_get_notifications  --> TVProgram/get_notifications');
+    ROUTE('+API  ?    -tvprogram_get_templates      --> TVProgram/get_templates');
+    ROUTE('+API  ?    -tvprogram_get_template/{id}  --> TVProgram/get_template');
+    ROUTE('+API  ?    +tvprogram_save_template      --> TVProgram/save_template');
     ROUTE('+API  ?    +tvprogram_start_worker       --> TVProgram/start_worker');
     ROUTE('+API  ?    +tvprogram_stop_worker        --> TVProgram/stop_worker');
     ROUTE('+API  ?    +tvprogram_restart_worker     --> TVProgram/restart_worker');

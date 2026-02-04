@@ -125,4 +125,53 @@ NEWSCHEMA('TVProgram', function (schema) {
             MAIN.tvWorker.on('message', handler);
         }
     });
+
+    schema.action('get_notifications', {
+        name: 'Get Notifications',
+        query: 'date:Date',
+        action: function ($) {
+            let builder = QB.find('notification_queue').where('service', 'tvprogram');
+            
+            if ($.query.date)
+                builder.where('date', $.query.date);
+            
+            builder.sort('created_at', true).callback($.callback);
+        }
+    });
+
+    schema.action('get_templates', {
+        name: 'Get Templates',
+        action: function ($) {
+            QB.find('message_templates').where('service', 'tvprogram').callback($.callback);
+        }
+    });
+
+    schema.action('get_template', {
+        name: 'Get Template',
+        params: 'id:Number',
+        action: function ($) {
+            QB.read('message_templates').id($.params.id).callback($.callback);
+        }
+    });
+
+    schema.action('save_template', {
+        name: 'Save Template',
+        input: 'id:Number,name:String,event_type:String,content:String',
+        action: function ($) {
+            var model = $.model;
+            var data = {
+                name: model.name,
+                event_type: model.event_type,
+                template: model.content,
+                updated_at: new Date()
+            };
+
+            if (model.id) {
+                QB.modify('message_templates', data).id(model.id).callback($.callback);
+            } else {
+                data.service = 'tvprogram';
+                QB.insert('message_templates', data).callback($.callback);
+            }
+        }
+    });
 });

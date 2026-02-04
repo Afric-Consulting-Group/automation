@@ -1,0 +1,1060 @@
+<files>
+    <file path="plugins/ussdapp/index.js">
+        <![CDATA[
+exports.icon = 'ti ti-docker';
+exports.name = '@(USSD Apps)';
+exports.position = 1;
+exports.permissions = [{ id: 'ussdapp', name: 'USSD App' }];
+exports.visible = user => user.sa || user.permissions.includes('ussdapp');
+
+// Routes pour les pages de détails
+exports.routes = [
+	{ url: '/ussdapp/{name}/', html: 'simulator' }
+];
+
+exports.install = function() {
+	ROUTE('+API  ?    -ussdapp_list            --> USSDApp/list');
+	ROUTE('+API  ?    -ussdapp_read/{name}     --> USSDApp/read');
+	ROUTE('+API  ?    -ussdapp_status/{name}   --> USSDApp/status');
+	ROUTE('+API  ?    -ussdapp_logs/{name}     --> USSDApp/logs');
+	ROUTE('+API  ?    -ussdapp_stats/{name}    --> USSDApp/stats');
+	ROUTE('+API  ?    -ussdapp_containers      --> USSDApp/containers');
+	ROUTE('+API  ?    +ussdapp_deploy          --> USSDApp/deploy');
+	ROUTE('+API  ?    +ussdapp_start/{name}    --> USSDApp/start');
+	ROUTE('+API  ?    +ussdapp_stop/{name}     --> USSDApp/stop');
+	ROUTE('+API  ?    +ussdapp_toggle/{name}   --> USSDApp/toggle');
+	ROUTE('+API  ?    +ussdapp_delete/{name}   --> USSDApp/delete');
+	ROUTE('+API  ?    +ussdapp_monitor         --> USSDApp/monitor');
+	ROUTE('+API  ?    +ussdapp_activate/{name}   --> USSDApp/start');
+	ROUTE('+API  ?    +ussdapp_deactivate/{name} --> USSDApp/stop');
+};
+
+console.log('✅ Routes USSDApp configurées');
+        ]]>
+    </file>
+    <file path="plugins/ussdapp/schemas/instances.js">
+        <![CDATA[
+NEWSCHEMA('USSDApp', function (schema) {
+
+	// Liste tous les opérateurs
+	schema.action('list', {
+		name: 'List Instances',
+		query: 'search:String, status:String',
+		action: async function ($) {
+			try {
+				var builder = DATA.find('nosql/tbl_ussdapps');
+
+				// Auto-query avec les champs disponibles
+				builder.autoquery(
+					$.query,
+					'name:String,port:Number,ussdCode:String,status:String,url:String,containerId:String,createdAt:Date,updatedAt:Date',
+					'dtcreated_desc',
+					50
+				);
+
+				// Recherche par nom
+				if ($.query.search) {
+					builder.search('name', $.query.search);
+				}
+
+				// Filtrer par statut
+				if ($.query.status) {
+					builder.where('status', $.query.status);
+				}
+
+				let instances = await builder.promise();
+
+				// Optionnel : synchroniser le statut réel avec Docker
+				for (let instance of instances) {
+					const statusResult = await USSDDockerOps.getStatus(instance.name);
+					if (statusResult.success) {
+						instance.realTimeStatus = statusResult.status;
+					}
+				}
+
+				$.callback(instances);
+			} catch (err) {
+				$.invalid(err);
+			}
+		}
+	});
+
+	// Lire un opérateur spécifique
+	schema.action('read', {
+		name: 'Read Instance',
+		params: '*name:String',
+		action: async function ($) {
+			try {
+				let instance = await DATA.find('nosql/tbl_ussdapps')
+					.where('name', $.params.name)
+					.first()
+					.promise();
+
+				if (!instance) {
+					return $.invalid('Opérateur introuvable');
+				}
+
+				// Récupérer le statut en temps réel
+				const statusResult = await USSDDockerOps.getStatus($.params.name);
+				if (statusResult.success) {
+					instance.realTimeStatus = statusResult.status;
+				}
+
+				$.callback(instance);
+			} catch (err) {
+				$.invalid(err);
+			}
+		}
+	});
+
+	// Déployer un nouvel opérateur
+	schema.action('deploy', {
+		name: 'Deploy Instance',
+		input: '*name:String, *port:Number, ussdCode:String',
+		action: async function ($, model) {
+			try {
+				const result = await USSDDockerOps.deploy({
+					name: model.name,
+					port: model.port,
+					ussdCode: model.ussdCode || '*000#'
+				});
+
+				if (result.success) {
+					$.success(result.message);
+					$.callback(result.operator);
+				} else {
+					$.invalid(result.error);
+				}
+			} catch (err) {
+				$.invalid(err);
+			}
+		}
+	});
+
+	// Démarrer un opérateur
+	schema.action('start', {
+		name: 'Start Instance',
+		params: '*name:String',
+		action: async function ($) {
+			try {
+				const result = await USSDDockerOps.start($.params.name);
+
+				if (result.success) {
+					$.success(result.message);
+				} else {
+					$.invalid(result.error);
+				}
+			} catch (err) {
+				$.invalid(err);
+			}
+		}
+	});
+
+	// Arrêter un opérateur
+	schema.action('stop', {
+		name: 'Stop Instance',
+		params: '*name:String',
+		action: async function ($) {
+			try {
+				const result = await USSDDockerOps.stop($.params.name);
+
+				if (result.success) {
+					$.success(result.message);
+				} else {
+					$.invalid(result.error);
+				}
+			} catch (err) {
+				$.invalid(err);
+			}
+		}
+	});
+
+	// Basculer l'état (start/stop)
+	schema.action('toggle', {
+		name: 'Toggle Instance',
+		params: '*name:String',
+		action: async function ($) {
+			try {
+				const result = await USSDDockerOps.toggle($.params.name);
+
+				if (result.success) {
+					$.success(result.message);
+				} else {
+					$.invalid(result.error);
+				}
+			} catch (err) {
+				$.invalid(err);
+			}
+		}
+	});
+
+	// Supprimer un opérateur
+	schema.action('delete', {
+		name: 'Delete Instance',
+		params: '*name:String',
+		action: async function ($) {
+			try {
+				const result = await USSDDockerOps.delete($.params.name);
+
+				if (result.success) {
+					$.success(result.message);
+				} else {
+					$.invalid(result.error);
+				}
+			} catch (err) {
+				$.invalid(err);
+			}
+		}
+	});
+
+	// Obtenir le statut en temps réel
+	schema.action('status', {
+		name: 'Get Instance Status',
+		params: '*name:String',
+		action: async function ($) {
+			try {
+				const result = await USSDDockerOps.getStatus($.params.name);
+
+				if (result.success) {
+					$.callback(result);
+				} else {
+					$.invalid(result.error);
+				}
+			} catch (err) {
+				$.invalid(err);
+			}
+		}
+	});
+
+	// Obtenir les logs
+	schema.action('logs', {
+		name: 'Get Instance Logs',
+		params: '*name:String, lines:Number',
+		action: async function ($) {
+			try {
+				const lines = $.params.lines || 100;
+				const result = await USSDDockerOps.getLogs($.params.name, lines);
+
+				if (result.success) {
+					$.callback(result.logs);
+				} else {
+					$.invalid(result.error);
+				}
+			} catch (err) {
+				$.invalid(err);
+			}
+		}
+	});
+
+	// Obtenir les statistiques
+	schema.action('stats', {
+		name: 'Get Instance Stats',
+		params: '*name:String',
+		action: async function ($) {
+			try {
+				const result = await USSDDockerOps.getStats($.params.name);
+
+				if (result.success) {
+					$.callback(result.stats);
+				} else {
+					$.invalid(result.error);
+				}
+			} catch (err) {
+				$.invalid(err);
+			}
+		}
+	});
+
+	// Surveiller tous les opérateurs
+	schema.action('monitor', {
+		name: 'Monitor All Instances',
+		action: async function ($) {
+			try {
+				const result = await USSDDockerOps.monitorAll();
+
+				if (result.success) {
+					$.success(`${result.monitored} opérateurs surveillés`);
+				} else {
+					$.invalid(result.error);
+				}
+			} catch (err) {
+				$.invalid(err);
+			}
+		}
+	});
+
+	// Lister tous les conteneurs Docker (debug)
+	schema.action('containers', {
+		name: 'List All Docker Containers',
+		action: async function ($) {
+			try {
+				const result = await USSDDockerOps.listContainers();
+
+				if (result.success) {
+					$.callback(result.containers);
+				} else {
+					$.invalid(result.error);
+				}
+			} catch (err) {
+				$.invalid(err);
+			}
+		}
+	});
+});
+
+console.log('✅ Schema Instances chargé avec USSDDockerOps');
+        ]]>
+    </file>
+    <file path="plugins/ussdapp/public/simulator.html">
+        <![CDATA[
+<style>
+	/* The device with borders */
+	.smartphone {
+		position: relative;
+		width: 357px;
+		height: 693px;
+		margin: auto;
+		border: 16px black solid;
+		border-top-width: 60px;
+		border-bottom-width: 60px;
+		border-radius: 36px;
+	}
+	/* The horizontal line on the top of the device */
+	.smartphone:before {
+		content: '';
+		display: block;
+		width: 60px;
+		height: 5px;
+		position: absolute;
+		top: -30px;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		background: #333;
+		border-radius: 10px;
+	}
+
+	/* The circle on the bottom of the device */
+	.smartphone:after {
+		content: '';
+		display: block;
+		width: 35px;
+		height: 35px;
+		position: absolute;
+		left: 50%;
+		bottom: -65px;
+		transform: translate(-50%, -50%);
+		background: #333;
+		border-radius: 50%;
+	}
+	/* The screen (or content) of the device */
+	.smartphone .content {
+		width: 325px;
+		height: 575px;
+		background: white;
+	}
+</style>
+<ui-plugin>
+
+	<ui-component name="viewbox" path="common.page" config="parent:window;margin:60;scrollbarshadow:1;centered:1" class="invisible">
+
+		<div class="mt10">
+
+		<div class="smartphone">
+			<div class="content">
+				<ui-bind path="?.url" config="template" class="b">
+			<script type="text/html" >
+				 <iframe src="{{ value }}" style="width:100%;border:none;height:100%" />
+			</script>
+
+		</ui-bind>
+			</div>
+		</div>
+
+
+		</div>
+
+
+	</ui-component>
+
+</ui-plugin>
+
+<script>
+	PLUGIN(function(exports) {
+		exports.reload = function() {
+			var params = NAV.params;
+			var id = params[0];
+			BREADCRUMB.add('@(USSD Apps)', '../')('Simulator', NAV.url);
+			exports.refresh(id);
+		};
+		exports.refresh = function(id) {
+			exports.tapi('ussdapp_read/{0} ERROR'.format(id),function(response) {
+				response.url = response.url + '/serviceussd';
+				let len = response.ussdCode;
+				response.shortcode = response.ussdCode.substring(1, len - 1);
+				var query = QUERIFY(response);
+				var url = 'https://simulation.dev.acgvas.com/details'+ query;
+				console.log(url);
+				exports.set('url', url);
+			});
+
+
+		};
+
+	});
+
+</script>
+        ]]>
+    </file>
+    <file path="plugins/ussdapp/public/index.html">
+        <![CDATA[
+<style>
+	.CLASS .ui-progress { background-color: #F0F0F0; border-radius: var(--radius); box-sizing: border-box; }
+	.CLASS .ui-progress div { background-size: 56px 56px; animation: progress 20s infinite linear forwards; margin-right: 30px; background-image: repeating-linear-gradient(45deg,#4285F4,#4285F4 10px,#4993E7 10px,#4993E7 20px); text-align: right; font-size: 10px; color: #FFFFFF; padding: 2px 5px 0 0; height: 18px; font-weight: bold; border-radius: 3px; min-width: 30px; }
+	.CLASS .ui-dark .ui-progress { background-color: #303030; }
+	.CLASS .status-badge { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: bold; text-transform: uppercase; }
+	.CLASS .status-running { background-color: #E8F5E9; color: #2E7D32; }
+	.CLASS .status-stopped { background-color: #FFEBEE; color: #C62828; }
+	.CLASS .status-unknown { background-color: #F5F5F5; color: #757575; }
+	.CLASS .btn-group { display: flex; gap: 5px; }
+
+	@keyframes progress {
+		from { background-position: 0% 0%; }
+		to { background-position: 100% 0%; }
+	}
+</style>
+
+<ui-plugin config="aclass:1">
+	<header>
+		<label><i class="ti ti-docker blue"></i>@(USSD Docker Apps)</label>
+		<div class="toolbar pin">
+			<button class="exec" data-exec="?/add"><i class="ti ti-plus mr5"></i>@(Deploy app)</button>
+			<button class="exec" data-exec="?/refresh"><i class="ti ti-refresh mr5"></i>@(Refresh)</button>
+			<button class="exec" data-exec="?/monitor"><i class="ti ti-activity mr5"></i>@(Monitor All)</button>
+		</div>
+	</header>
+	<ui-component name="importer" path="common.form" config="if:ussdappdata;url:/_ussdapp/forms/create.html;"></ui-component>
+	<ui-component name="importer" path="common.panel" config="if:pluginussdappdetail;url:/_ussdapp/detail.html;"></ui-component>
+	<ui-component name="datagrid" path="?.items" class="CLASS" config="margin:22;click:?/detail;checked:?.checked">
+		<script type="text/plain">
+            [
+                { name: 'name', text: '@(Name)', width: 150, template: '<strong>{{ name }}</strong>' },
+                { name: 'ussdCode', text: '@(USSD Code)', width: 120 },
+                { name: 'port', text: '@(Port)', width: 80 },
+                { name: 'url', text: '@(URL)', width: 250, template: '<a href="{{ url }}" target="_blank">{{ url }}</a>' },
+                { name: 'status', text: '@(Status)', width: 120, template: '{{ if status === "running" }}<span class="status-badge status-running"><i class="ti ti-circle-check"></i> Running</span> {{ fi }} {{ if  status === "stopped" }}<span class="status-badge status-stopped"><i class="ti ti-circle-x"></i> Stopped</span>{{ else }}<span class="status-badge status-unknown">Unknown</span>{{ fi }}' },
+                { name: 'dtcreated', text: '@(Created)', type: 'date', width: 140 },
+                { type: 'controls', width: 200, template: '<div class="btn-group">{{ if status === "running" }}<button class="exec" data-exec="?/stop" data-name="{{ name }}" title="Stop"><i class="ti ti-pause red"></i></button>{{ else }}<button class="exec" data-exec="?/start" data-name="{{ name }}" title="Start"><i class="ti ti-play-alt green"></i></button>{{ fi }}<button class="exec" data-exec="?/logs" data-name="{{ name }}" title="Logs"><i class="ti ti-file blue"></i></button><button class="exec" data-exec="?/stats" data-name="{{ name }}" title="Stats"><i class="ti ti-chart-bar orange"></i></button><button class="exec" data-exec="?/remove" data-name="{{ name }}" title="Delete"><i class="ti ti-trash red"></i></button></div>' }
+            ]
+		</script>
+	</ui-component>
+</ui-plugin>
+
+<script>
+	PLUGIN(function(exports) {
+
+		exports.reload = function() {
+			BREADCRUMB.add('Instances', NAV.url);
+			exports.refresh();
+		};
+
+		exports.refresh = function(el) {
+			el && el.find('i').aclass('ti-spin').rclass('ti-spin', 800);
+			exports.tapi('ussdapp_list', function(response) {
+				response.quicksort('dtcreated_desc');
+				exports.set('items @hideloading', response);
+			});
+		};
+
+		exports.add = function() {
+			SETTER('loading/show');
+			SET('ussdappdata', {});
+			SET('common.form @hideloading', 'ussdappdata');
+		};
+ 	exports.detail = function(row) {
+		console.log(row);
+        var windowId = 'detail-' + row.name;
+        // Fermer la fenêtre si elle existe déjà
+        exports.closeWindow(windowId);
+        var html = `
+            <div class="padding">
+                <div style="background:#F5F5F5;padding:15px;border-radius:8px;margin-bottom:15px;">
+                    <h3><i class="ti ti-server blue"></i> ${row.name}</h3>
+                    <p><strong>Status:</strong> <span style="display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px;background-color:${row.status === 'running' ? '#4CAF50' : '#F44336'};"></span>${row.status}</p>
+                    <p><strong>USSD Code:</strong> ${row.ussdCode}</p>
+                    <p><strong>Port:</strong> ${row.port}</p>
+                    <p><strong>URL:</strong> <a href="${row.url}" target="_blank">${row.url}</a></p>
+                    <p><strong>Container ID:</strong> <code>${row.containerId}</code></p>
+                    <p><strong>Created:</strong> ${new Date(row.createdAt).toLocaleString()}</p>
+                </div>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                    <button class="button button-small exec" data-exec="pluginussdapp/toggleInstance" data-name="${row.name}" data-window="${windowId}">
+                        <i class="ti ti-repeat"></i> Toggle Start/Stop
+                    </button>
+                    <button class="button button-small exec" data-exec="pluginussdapp/logs" data-name="${row.name}">
+                        <i class="ti ti-file-text blue"></i> View Logs
+                    </button>
+                    <button class="button button-small exec" data-exec="pluginussdapp/stats" data-name="${row.name}">
+                        <i class="ti ti-chart-bar orange"></i> View Stats
+                    </button>
+                    <button class="button button-small exec" data-exec="pluginussdapp/refreshStatus" data-name="${row.name}" data-window="${windowId}">
+                        <i class="ti ti-refresh green"></i> Refresh Status
+                    </button>
+ 					<button class="button button-small exec" data-exec="pluginussdapp/simulator" data-name="${row.name}" data-window="${windowId}">
+                        <i class="ti ti-phone green"></i> Simulateur
+                    </button>
+                    <button class="button button-small exec" data-exec="pluginussdapp/deleteInstance" data-name="${row.name}" data-window="${windowId}">
+                        <i class="ti ti-trash red"></i> Delete Instance
+                    </button>
+                </div>
+            </div>
+        `;
+
+        common.windows.push({
+            id: windowId,
+            offset: { x: 250 + (common.windows.length * 30), y: 100 + (common.windows.length * 30), width: 800, height: 500, minwidth: 600, minheight: 400 },
+            title: 'Instance: ' + row.name,
+            icon: 'ti-server',
+            html: html,
+            actions: { minimize: true, maximize: true, move: true, resize: true, close: true }
+        });
+        UPD('common.windows');
+    };
+		// exports.detail = async function(row) {
+			// var name = row.name;
+			// $('.virtualwire').rclass('hidden');
+			// SET('pluginussdappdetail', row);
+			// SET('common.panel', 'pluginussdappdetail');
+		// };
+
+
+
+		exports.start = function(el) {
+			var name = el.attrd('name');
+			EXEC('-approve/show', '@(Are you sure you want to start this instance?)', '@(Start)', function() {
+				exports.tapi('ussdapp_start/{name} ERROR'.args({ name: name }), function(response) {
+					exports.refresh();
+					EXEC('-notify/success', '@(Instance has been started.)');
+				});
+			});
+		};
+
+		exports.stop = function(el) {
+			var name = el.attrd('name');
+			EXEC('-approve/show', '@(Are you sure you want to stop this instance?)', '@(Stop)', function() {
+				exports.tapi('ussdapp_stop/{name} ERROR'.args({ name: name }), function(response) {
+					exports.refresh();
+					EXEC('-notify/success', '@(Instance has been stopped.)');
+				});
+			});
+		};
+
+		exports.stats = function(el) {
+        var name = el.attrd('name');
+        var windowId = 'stats-' + name + '-' + Date.now();
+
+        SETTER('loading/show');
+        exports.tapi('ussdapp_stats/{0} ERROR'.format(name), function(response) {
+            SETTER('loading/hide');
+            var html = '<div class="padding" style="font-size:14px;">';
+            html += '<div style="margin-bottom:15px;"><strong><i class="ti ti-cpu"></i> CPU:</strong> <span style="color:#4285F4;font-size:20px;font-weight:bold;">' + response.cpu + '</span></div>';
+            html += '<div style="margin-bottom:15px;"><strong><i class="ti ti-memory"></i> Memory:</strong> ' + response.memory + ' <span style="color:#F4B400;">(' + response.memoryPercent + ')</span></div>';
+            html += '<div style="margin-bottom:15px;"><strong><i class="ti ti-network"></i> Network I/O:</strong> ' + response.network + '</div>';
+            html += '<div><strong><i class="ti ti-database"></i> Block I/O:</strong> ' + response.block + '</div>';
+            html += '</div>';
+
+            common.windows.push({
+                id: windowId,
+                offset: { x: 300, y: 200, width: 600, height: 400, minwidth: 400, minheight: 300 },
+                title: 'Statistics: ' + name,
+                icon: 'ti-chart-bar',
+                html: html,
+                actions: { minimize: true, maximize: true, move: true, resize: true, close: true }
+            });
+            UPD('common.windows');
+        });
+    };
+
+
+		exports.remove = function(el) {
+			var name = el.attrd('name');
+			EXEC('-approve/show', '@(Are you sure you want to DELETE this instance? This action cannot be undone!)', '@(Delete)', function() {
+				exports.tapi('ussdapp_delete/{name} ERROR'.args({ name: name }), function(response) {
+					exports.refresh();
+					EXEC('-notify/success', '@(Instance has been deleted.)');
+				});
+			});
+		};
+
+		exports.monitor = function() {
+			SETTER('loading/show');
+			exports.tapi('ussdapp_monitor ERROR', function(response) {
+				SETTER('loading/hide');
+				exports.refresh();
+				EXEC('-notify/success', '@(All ussdapp have been monitored.)');
+			});
+		};
+
+
+		exports.closeWindow = function(windowId) {
+			var index = common.windows.findIndex(w => w.id === windowId);
+			if (index !== -1) {
+				common.windows.splice(index, 1);
+				UPD('common.windows');
+			}
+		};
+
+		exports.simulator = function(el) {
+			var id = el.attrd('name');
+			var windowId = el.attrd('window');
+			exports.closeWindow(windowId);
+			REDIRECT('/ussdapp/{0}/'.format(id));
+		};
+
+
+		exports.logs = function(el) {
+			var name = el.attrd('name');
+			var windowId = 'logs-' + name + '-' + Date.now();
+			SETTER('loading/show');
+			exports.tapi('ussdapp_logs/{0}?lines=200 ERROR'.format(name), function(response) {
+				SETTER('loading/hide');
+				var html = '<pre style="background:#000;color:#0f0;padding:15px;height:100%;overflow:auto;font-family:monospace;font-size:12px;margin:0;">' + response + '</pre>';
+				common.windows.push({
+					id: windowId,
+					offset: { x: 200, y: 150, width: 900, height: 600, minwidth: 600, minheight: 400 },
+					title: 'Logs: ' + name,
+					icon: 'ti-file-text',
+					html: html,
+					actions: { minimize: true, maximize: true, move: true, resize: true, close: true }
+				});
+				UPD('common.windows');
+			});
+		};
+		exports.refreshStatus = function(el) {
+			var name = el.attrd('name');
+			SETTER('loading/show');
+			exports.tapi('ussdapp_status/{0} ERROR'.format(name), function(response) {
+				SETTER('loading/hide');
+				exports.refresh();
+				exports.refreshDetailWindow(name);
+				EXEC('-notify/success', 'Status: ' + response.status);
+			});
+    };
+
+    exports.deleteInstance = function(el) {
+        var name = el.attrd('name');
+        var windowId = el.attrd('window');
+        EXEC('-approve/show', 'Are you sure you want to DELETE this instance? This action cannot be undone!', 'Delete', function() {
+            exports.tapi('ussdapp_delete/{0} ERROR'.format(name), function(response) {
+                EXEC('-notify/success', 'Instance deleted successfully');
+                exports.closeWindow(windowId);
+                exports.refresh();
+            });
+        });
+    };
+
+    exports.refreshDetailWindow = function(name) {
+        exports.tapi('ussdapp_read/{0}'.format(name), function(instance) {
+            exports.detail(instance);
+        });
+    };
+
+	exports.toggleInstance = function(el) {
+        var name = el.attrd('name');
+        var windowId = el.attrd('window');
+        exports.tapi('ussdapp_toggle/{0} ERROR'.format(name), function(response) {
+			console.log(response);
+            EXEC('-notify/{0}'.format(response.value == 'Opérateur acgtelecom1 démarré.' ? 'success' : 'warning'), response.value);
+            exports.refresh();
+            exports.refreshDetailWindow(name);
+        });
+    };
+		// Rafraîchir automatiquement toutes les 10 secondes
+		setInterval(exports.refresh, 10000);
+	});
+</script>
+        ]]>
+    </file>
+    <file path="plugins/ussdapp/public/detail.html">
+        <![CDATA[
+<style>
+	.CLASS .ui-progress { background-color: #F0F0F0; border-radius: var(--radius); box-sizing: border-box; }
+	.CLASS .ui-progress div { background-size: 56px 56px; animation: progress 20s infinite linear forwards; margin-right: 30px; background-image: repeating-linear-gradient(45deg,#4285F4,#4285F4 10px,#4993E7 10px,#4993E7 20px); text-align: right; font-size: 10px; color: #FFFFFF; padding: 2px 5px 0 0; height: 18px; font-weight: bold; border-radius: 3px; min-width: 30px; }
+	.CLASS .ui-dark .ui-progress { background-color: #303030; }
+	.CLASS .status-badge { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: bold; text-transform: uppercase; }
+	.CLASS .status-running { background-color: #E8F5E9; color: #2E7D32; }
+	.CLASS .status-stopped { background-color: #FFEBEE; color: #C62828; }
+	.CLASS .status-unknown { background-color: #F5F5F5; color: #757575; }
+	.CLASS .btn-group { display: flex; gap: 5px; }
+
+	@keyframes progress {
+		from { background-position: 0% 0%; }
+		to { background-position: 100% 0%; }
+	}
+</style>
+
+<ui-plugin config="aclass:1">
+	<header>
+		<label><i class="ti ti-docker blue"></i>@(USSD Docker Apps)</label>
+		<div class="toolbar pin">
+			<button class="exec" data-exec="?/add"><i class="ti ti-plus mr5"></i>@(Deploy app)</button>
+			<button class="exec" data-exec="?/refresh"><i class="ti ti-refresh mr5"></i>@(Refresh)</button>
+			<button class="exec" data-exec="?/monitor"><i class="ti ti-activity mr5"></i>@(Monitor All)</button>
+		</div>
+	</header>
+	<ui-component name="importer" path="common.form" config="if:ussdappdata;url:/_ussdapp/forms/create.html;"></ui-component>
+	<ui-component name="importer" path="common.panel" config="if:pluginussdappdetail;url:/_ussdapp/detail.html;"></ui-component>
+	<ui-component name="datagrid" path="?.items" class="CLASS" config="margin:22;click:?/detail;checked:?.checked">
+		<script type="text/plain">
+            [
+                { name: 'name', text: '@(Name)', width: 150, template: '<strong>{{ name }}</strong>' },
+                { name: 'ussdCode', text: '@(USSD Code)', width: 120 },
+                { name: 'port', text: '@(Port)', width: 80 },
+                { name: 'url', text: '@(URL)', width: 250, template: '<a href="{{ url }}" target="_blank">{{ url }}</a>' },
+                { name: 'status', text: '@(Status)', width: 120, template: '{{ if status === "running" }}<span class="status-badge status-running"><i class="ti ti-circle-check"></i> Running</span> {{ fi }} {{ if  status === "stopped" }}<span class="status-badge status-stopped"><i class="ti ti-circle-x"></i> Stopped</span>{{ else }}<span class="status-badge status-unknown">Unknown</span>{{ fi }}' },
+                { name: 'dtcreated', text: '@(Created)', type: 'date', width: 140 },
+                { type: 'controls', width: 200, template: '<div class="btn-group">{{ if status === "running" }}<button class="exec" data-exec="?/stop" data-name="{{ name }}" title="Stop"><i class="ti ti-pause red"></i></button>{{ else }}<button class="exec" data-exec="?/start" data-name="{{ name }}" title="Start"><i class="ti ti-play-alt green"></i></button>{{ fi }}<button class="exec" data-exec="?/logs" data-name="{{ name }}" title="Logs"><i class="ti ti-file blue"></i></button><button class="exec" data-exec="?/stats" data-name="{{ name }}" title="Stats"><i class="ti ti-chart-bar orange"></i></button><button class="exec" data-exec="?/remove" data-name="{{ name }}" title="Delete"><i class="ti ti-trash red"></i></button></div>' }
+            ]
+		</script>
+	</ui-component>
+</ui-plugin>
+
+<script>
+	PLUGIN(function(exports) {
+
+		exports.reload = function() {
+			BREADCRUMB.add('Instances', NAV.url);
+			exports.refresh();
+		};
+
+		exports.refresh = function(el) {
+			el && el.find('i').aclass('ti-spin').rclass('ti-spin', 800);
+			exports.tapi('ussdapp_list', function(response) {
+				response.quicksort('dtcreated_desc');
+				exports.set('items @hideloading', response);
+			});
+		};
+
+		exports.add = function() {
+			SETTER('loading/show');
+			SET('ussdappdata', {});
+			SET('common.form @hideloading', 'ussdappdata');
+		};
+ 	exports.detail = function(row) {
+		console.log(row);
+        var windowId = 'detail-' + row.name;
+        // Fermer la fenêtre si elle existe déjà
+        exports.closeWindow(windowId);
+        var html = `
+            <div class="padding">
+                <div style="background:#F5F5F5;padding:15px;border-radius:8px;margin-bottom:15px;">
+                    <h3><i class="ti ti-server blue"></i> ${row.name}</h3>
+                    <p><strong>Status:</strong> <span style="display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px;background-color:${row.status === 'running' ? '#4CAF50' : '#F44336'};"></span>${row.status}</p>
+                    <p><strong>USSD Code:</strong> ${row.ussdCode}</p>
+                    <p><strong>Port:</strong> ${row.port}</p>
+                    <p><strong>URL:</strong> <a href="${row.url}" target="_blank">${row.url}</a></p>
+                    <p><strong>Container ID:</strong> <code>${row.containerId}</code></p>
+                    <p><strong>Created:</strong> ${new Date(row.createdAt).toLocaleString()}</p>
+                </div>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                    <button class="button button-small exec" data-exec="pluginussdapp/toggleInstance" data-name="${row.name}" data-window="${windowId}">
+                        <i class="ti ti-repeat"></i> Toggle Start/Stop
+                    </button>
+                    <button class="button button-small exec" data-exec="pluginussdapp/logs" data-name="${row.name}">
+                        <i class="ti ti-file-text blue"></i> View Logs
+                    </button>
+                    <button class="button button-small exec" data-exec="pluginussdapp/stats" data-name="${row.name}">
+                        <i class="ti ti-chart-bar orange"></i> View Stats
+                    </button>
+                    <button class="button button-small exec" data-exec="pluginussdapp/refreshStatus" data-name="${row.name}" data-window="${windowId}">
+                        <i class="ti ti-refresh green"></i> Refresh Status
+                    </button>
+ 					<button class="button button-small exec" data-exec="pluginussdapp/simulator" data-name="${row.name}" data-window="${windowId}">
+                        <i class="ti ti-phone green"></i> Simulateur
+                    </button>
+                    <button class="button button-small exec" data-exec="pluginussdapp/deleteInstance" data-name="${row.name}" data-window="${windowId}">
+                        <i class="ti ti-trash red"></i> Delete Instance
+                    </button>
+                </div>
+            </div>
+        `;
+
+        common.windows.push({
+            id: windowId,
+            offset: { x: 250 + (common.windows.length * 30), y: 100 + (common.windows.length * 30), width: 800, height: 500, minwidth: 600, minheight: 400 },
+            title: 'Instance: ' + row.name,
+            icon: 'ti-server',
+            html: html,
+            actions: { minimize: true, maximize: true, move: true, resize: true, close: true }
+        });
+        UPD('common.windows');
+    };
+		// exports.detail = async function(row) {
+			// var name = row.name;
+			// $('.virtualwire').rclass('hidden');
+			// SET('pluginussdappdetail', row);
+			// SET('common.panel', 'pluginussdappdetail');
+		// };
+
+
+
+		exports.start = function(el) {
+			var name = el.attrd('name');
+			EXEC('-approve/show', '@(Are you sure you want to start this instance?)', '@(Start)', function() {
+				exports.tapi('ussdapp_start/{name} ERROR'.args({ name: name }), function(response) {
+					exports.refresh();
+					EXEC('-notify/success', '@(Instance has been started.)');
+				});
+			});
+		};
+
+		exports.stop = function(el) {
+			var name = el.attrd('name');
+			EXEC('-approve/show', '@(Are you sure you want to stop this instance?)', '@(Stop)', function() {
+				exports.tapi('ussdapp_stop/{name} ERROR'.args({ name: name }), function(response) {
+					exports.refresh();
+					EXEC('-notify/success', '@(Instance has been stopped.)');
+				});
+			});
+		};
+
+		exports.stats = function(el) {
+        var name = el.attrd('name');
+        var windowId = 'stats-' + name + '-' + Date.now();
+
+        SETTER('loading/show');
+        exports.tapi('ussdapp_stats/{0} ERROR'.format(name), function(response) {
+            SETTER('loading/hide');
+            var html = '<div class="padding" style="font-size:14px;">';
+            html += '<div style="margin-bottom:15px;"><strong><i class="ti ti-cpu"></i> CPU:</strong> <span style="color:#4285F4;font-size:20px;font-weight:bold;">' + response.cpu + '</span></div>';
+            html += '<div style="margin-bottom:15px;"><strong><i class="ti ti-memory"></i> Memory:</strong> ' + response.memory + ' <span style="color:#F4B400;">(' + response.memoryPercent + ')</span></div>';
+            html += '<div style="margin-bottom:15px;"><strong><i class="ti ti-network"></i> Network I/O:</strong> ' + response.network + '</div>';
+            html += '<div><strong><i class="ti ti-database"></i> Block I/O:</strong> ' + response.block + '</div>';
+            html += '</div>';
+
+            common.windows.push({
+                id: windowId,
+                offset: { x: 300, y: 200, width: 600, height: 400, minwidth: 400, minheight: 300 },
+                title: 'Statistics: ' + name,
+                icon: 'ti-chart-bar',
+                html: html,
+                actions: { minimize: true, maximize: true, move: true, resize: true, close: true }
+            });
+            UPD('common.windows');
+        });
+    };
+
+
+		exports.remove = function(el) {
+			var name = el.attrd('name');
+			EXEC('-approve/show', '@(Are you sure you want to DELETE this instance? This action cannot be undone!)', '@(Delete)', function() {
+				exports.tapi('ussdapp_delete/{name} ERROR'.args({ name: name }), function(response) {
+					exports.refresh();
+					EXEC('-notify/success', '@(Instance has been deleted.)');
+				});
+			});
+		};
+
+		exports.monitor = function() {
+			SETTER('loading/show');
+			exports.tapi('ussdapp_monitor ERROR', function(response) {
+				SETTER('loading/hide');
+				exports.refresh();
+				EXEC('-notify/success', '@(All ussdapp have been monitored.)');
+			});
+		};
+
+
+		exports.closeWindow = function(windowId) {
+			var index = common.windows.findIndex(w => w.id === windowId);
+			if (index !== -1) {
+				common.windows.splice(index, 1);
+				UPD('common.windows');
+			}
+		};
+
+		exports.simulator = function(el) {
+			var id = el.attrd('name');
+			var windowId = el.attrd('window');
+			exports.closeWindow(windowId);
+			REDIRECT('/ussdapp/{0}/'.format(id));
+		};
+
+
+		exports.logs = function(el) {
+			var name = el.attrd('name');
+			var windowId = 'logs-' + name + '-' + Date.now();
+			SETTER('loading/show');
+			exports.tapi('ussdapp_logs/{0}?lines=200 ERROR'.format(name), function(response) {
+				SETTER('loading/hide');
+				var html = '<pre style="background:#000;color:#0f0;padding:15px;height:100%;overflow:auto;font-family:monospace;font-size:12px;margin:0;">' + response + '</pre>';
+				common.windows.push({
+					id: windowId,
+					offset: { x: 200, y: 150, width: 900, height: 600, minwidth: 600, minheight: 400 },
+					title: 'Logs: ' + name,
+					icon: 'ti-file-text',
+					html: html,
+					actions: { minimize: true, maximize: true, move: true, resize: true, close: true }
+				});
+				UPD('common.windows');
+			});
+		};
+		exports.refreshStatus = function(el) {
+			var name = el.attrd('name');
+			SETTER('loading/show');
+			exports.tapi('ussdapp_status/{0} ERROR'.format(name), function(response) {
+				SETTER('loading/hide');
+				exports.refresh();
+				exports.refreshDetailWindow(name);
+				EXEC('-notify/success', 'Status: ' + response.status);
+			});
+    };
+
+    exports.deleteInstance = function(el) {
+        var name = el.attrd('name');
+        var windowId = el.attrd('window');
+        EXEC('-approve/show', 'Are you sure you want to DELETE this instance? This action cannot be undone!', 'Delete', function() {
+            exports.tapi('ussdapp_delete/{0} ERROR'.format(name), function(response) {
+                EXEC('-notify/success', 'Instance deleted successfully');
+                exports.closeWindow(windowId);
+                exports.refresh();
+            });
+        });
+    };
+
+    exports.refreshDetailWindow = function(name) {
+        exports.tapi('ussdapp_read/{0}'.format(name), function(instance) {
+            exports.detail(instance);
+        });
+    };
+
+	exports.toggleInstance = function(el) {
+        var name = el.attrd('name');
+        var windowId = el.attrd('window');
+        exports.tapi('ussdapp_toggle/{0} ERROR'.format(name), function(response) {
+			console.log(response);
+            EXEC('-notify/{0}'.format(response.value == 'Opérateur acgtelecom1 démarré.' ? 'success' : 'warning'), response.value);
+            exports.refresh();
+            exports.refreshDetailWindow(name);
+        });
+    };
+		// Rafraîchir automatiquement toutes les 10 secondes
+		setInterval(exports.refresh, 10000);
+	});
+</script>
+        ]]>
+    </file>
+    <file path="plugins/ussdapp/public/forms/create.html">
+        <![CDATA[
+<style>
+    .~PATH~ .logo {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+    }
+    .~PATH~ .form-help {
+        background: #E3F2FD;
+        padding: 12px;
+        border-radius: 6px;
+        margin-bottom: 20px;
+        font-size: 13px;
+    }
+    .~PATH~ .ui-dark .form-help {
+        background: #1E3A5F;
+    }
+</style>
+
+<ui-component name="form" path="common.form" config="if:ussdappdata;width:900;reload:?/reload;submit:?/submit" plugin="~PATH~" class="hidden ~PATH~">
+    <div class="padding">
+        <div class="form-help">
+            <i class="ti ti-info-circle blue"></i>
+            <strong>@(Deploy a new USSD Operator)</strong><br>
+            @(Enter the instance name, port number (8000-9000), and USSD code to deploy a new Docker container.)
+        </div>
+
+        <div class="grid-3">
+            <div class="padding">
+                <ui-component name="input" path="?.name" config="placeholder:@(e.g. mtn, orange, moov);required:true;innerlabel:1;pattern:[a-z0-9\-_]+">
+                    <i class="ti ti-tag"></i> @(Instance Name)
+                </ui-component>
+                <small>@(Use lowercase a-z, 0-9, -, _)</small>
+            </div>
+
+            <div class="padding">
+                <ui-component name="input" path="?.port" config="placeholder:@(e.g. 8001);required:true;innerlabel:1;type:number;min:8000;max:9000">
+                    <i class="ti ti-plug"></i> @(Port Number)
+                </ui-component>
+                <small>@(Port range: 8000-9000)</small>
+            </div>
+
+            <div class="padding">
+                <ui-component name="input" path="?.ussdCode" config="placeholder:@(e.g. *150#);innerlabel:1">
+                    <i class="ti ti-hash"></i> @(USSD Code)
+                </ui-component>
+                <small>@(Optional, default: *000#)</small>
+            </div>
+        </div>
+
+        <div class="padding">
+            <ui-component name="input" path="?.description" config="placeholder:@(Optional description);innerlabel:1;type:textarea">
+                <i class="ti ti-file-text"></i> @(Description)
+            </ui-component>
+        </div>
+    </div>
+
+    <nav>
+        <ui-component name="validate" path="?">
+            <button name="submit" disabled><i class="ti ti-rocket"></i> @(DEPLOY INSTANCE)</button>
+        </ui-component>
+        <button name="cancel">@(CANCEL)</button>
+    </nav>
+</ui-component>
+
+<script>
+PLUGIN('~PATH~', function(exports) {
+    exports.reload = function (com) {
+        var model = exports.model || {};
+        com.reconfigure({
+            title: '@(Deploy New Instance)',
+            icon: 'docker'
+        });
+
+        // Valeurs par défaut
+        if (!model.ussdCode) {
+            exports.set('ussdCode', '*000#');
+        }
+    };
+
+    exports.submit = function(hide) {
+        var model = exports.model;
+
+        // Validation supplémentaire
+        if (!model.name || !/^[a-z0-9\-_]+$/.test(model.name)) {
+            EXEC('-notify/warning', '@(Invalid name. Use lowercase a-z, 0-9, -, _)');
+            return;
+        }
+
+        if (!model.port || model.port < 8000 || model.port > 9000) {
+            EXEC('-notify/warning', '@(Port must be between 8000 and 9000)');
+            return;
+        }
+
+        SETTER('loading/show');
+        exports.tapi('ussdapp_deploy ERROR', model, function(response, err) {
+            SETTER('loading/hide');
+            if (err) {
+                EXEC('-notify/warning', err);
+            } else {
+                hide();
+                EXEC('pluginussdapp/refresh');
+                EXEC('-notify/success', '@(Instance deployed successfully!)');
+            }
+        });
+
+        exports.model = {};
+    };
+});
+</script>
+        ]]>
+    </file>
+</files>

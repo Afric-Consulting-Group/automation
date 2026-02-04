@@ -1,5 +1,5 @@
 -- Configuration table
-CREATE TABLE config (
+CREATE TABLE IF NOT EXISTS config (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100) UNIQUE NOT NULL,
     value TEXT NOT NULL,
@@ -9,7 +9,7 @@ CREATE TABLE config (
 );
 
 -- Message templates
-CREATE TABLE message_templates (
+CREATE TABLE IF NOT EXISTS message_templates (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100) UNIQUE NOT NULL,
     service VARCHAR(100),
@@ -23,7 +23,7 @@ CREATE TABLE message_templates (
 
 
 -- Worker activity log for debugging
-CREATE TABLE worker_logs (
+CREATE TABLE IF NOT EXISTS worker_logs (
     id SERIAL PRIMARY KEY,
     worker_name VARCHAR(100) NOT NULL,
     event_type VARCHAR(50) NOT NULL,
@@ -34,7 +34,7 @@ CREATE TABLE worker_logs (
 );
 
 -- Worker status for realtime monitoring
-CREATE TABLE worker_status (
+CREATE TABLE IF NOT EXISTS worker_status (
     id SERIAL PRIMARY KEY,
     worker_name VARCHAR(100) UNIQUE NOT NULL,
     status VARCHAR(50) NOT NULL,

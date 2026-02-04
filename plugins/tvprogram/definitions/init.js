@@ -5,7 +5,7 @@ function initWorker() {
     if (MAIN.tvWorker) {
         MAIN.tvWorker.terminate();
     }
-    MAIN.tvWorker = NEWFORK('tvprogram');
+    MAIN.tvWorker = NEWFORK('~' + PATH.join(__dirname, '../workers/tvprogram.js'));
 
     MAIN.tvWorker.on('message', (msg) => {
         // Broadcast to all WebSocket clients

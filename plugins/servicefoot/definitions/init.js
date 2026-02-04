@@ -6,7 +6,7 @@ function initWorker() {
     if (MAIN.footballWorker) {
         MAIN.footballWorker.terminate();
     }
-    MAIN.footballWorker = NEWFORK('servicefoot');
+    MAIN.footballWorker = NEWFORK('~' + PATH.join(__dirname, '../workers/servicefoot.js'));
 
     MAIN.footballWorker.on('message', (msg) => {
         // Broadcast to all WebSocket clients

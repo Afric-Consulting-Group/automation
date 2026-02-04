@@ -1,0 +1,493 @@
+<style>
+	.CLASS .status-badge { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: bold; text-transform: uppercase; }
+	.CLASS .status-running { background-color: #E8F5E9; color: #2E7D32; }
+	.CLASS .status-stopped { background-color: #FFEBEE; color: #C62828; }
+	.CLASS .program-card { border: 1px solid #E0E0E0; border-radius: 8px; padding: 15px; margin-bottom: 10px; background: #FFF; transition: box-shadow 0.2s; }
+    .CLASS .program-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+	.CLASS .program-header { display: flex; justify-content: space-between; font-size: 12px; color: #666; margin-bottom: 10px; border-bottom: 1px solid #F0F0F0; padding-bottom: 5px; }
+	.CLASS .program-title { font-weight: bold; font-size: 16px; margin-bottom: 5px; color: #333; }
+	.CLASS .program-meta { font-size: 13px; color: #555; }
+	.CLASS .stats-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+	.CLASS .stat-card { background: #FFF; border-radius: 8px; padding: 15px; border: 1px solid #E0E0E0; border-left: 4px solid #4285F4; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+	.CLASS .stat-value { font-size: 24px; font-weight: bold; display: block; color: #333; }
+	.CLASS .stat-label { font-size: 11px; color: #777; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    /* Tabs */
+    .CLASS .tab-menu { display: flex; border-bottom: 1px solid #e0e0e0; margin-bottom: 20px; background: #F9F9F9; padding: 0 10px; border-radius: 4px 4px 0 0; }
+    .CLASS .tab-item { padding: 12px 20px; cursor: pointer; color: #666; border-bottom: 2px solid transparent; font-size: 14px; transition: all 0.2s; }
+    .CLASS .tab-item:hover { color: #4285F4; background: #F0F4FF; }
+    .CLASS .tab-item.selected { color: #4285F4; border-bottom-color: #4285F4; font-weight: bold; background: #FFF; }
+    .CLASS .tab-content { display: none; }
+    .CLASS .tab-content.selected { display: block; }
+    
+    .CLASS .channel-item { padding: 12px; border-bottom: 1px solid #F0F0F0; cursor: pointer; transition: background 0.2s; display: flex; align-items: center; }
+    .CLASS .channel-item:hover { background: #F5F7FA; }
+    .CLASS .channel-item.selected { background: #E8F0FE; color: #1967D2; font-weight: bold; border-left: 3px solid #1967D2; }
+    .CLASS .channel-item i { margin-right: 10px; width: 20px; text-align: center; }
+
+    .CLASS .empty-state { padding: 40px; text-align: center; color: #999; }
+    .CLASS .empty-state i { font-size: 48px; display: block; margin-bottom: 10px; color: #DDD; }
+</style>
+
+<ui-plugin config="aclass:1">
+	<header>
+		<label><i class="ti ti-tv blue"></i>@(TV Program Automation)</label>
+		<div class="toolbar">
+			<button class="exec" data-exec="?/refresh"><i class="ti ti-refresh mr5"></i>@(Refresh All)</button>
+		</div>
+	</header>
+
+	<div class="padding">
+        
+        <div class="tab-menu">
+            <div class="tab-item selected exec" data-exec="?/tab" data-id="dashboard">@(Dashboard)</div>
+            <div class="tab-item exec" data-exec="?/tab" data-id="programs">@(TV Guide)</div>
+            <div class="tab-item exec" data-exec="?/tab" data-id="messages">@(Notification Queue)</div>
+            <div class="tab-item exec" data-exec="?/tab" data-id="templates">@(Templates)</div>
+        </div>
+
+        <!-- DASHBOARD TAB -->
+		<div class="tab-content selected" data-id="dashboard">
+            <div class="flex align-center mb20 space-between bg-smoke padding radius">
+                <div class="flex align-center">
+                    <ui-bind path="?.worker_running" config="template">
+                        <script type="text/plain">
+                            {{ if value }}
+                                <span class="status-badge status-running"><i class="ti ti-circle-check-fill mr5"></i>@(Worker Running)</span>
+                            {{ else }}
+                                <span class="status-badge status-stopped"><i class="ti ti-circle-xmark-fill mr5"></i>@(Worker Stopped)</span>
+                            {{ fi }}
+                        </script>
+                    </ui-bind>
+                    <div class="ml20 fs12 gray">
+                        <i class="ti ti-info-circle mr5"></i>@(Worker handles automated scraping and notifications.)
+                    </div>
+                </div>
+                <div class="toolbar pin">
+                    <button class="exec" data-exec="?/logs"><i class="ti ti-file-text mr5"></i>@(View Logs)</button>
+                    <ui-bind path="?.worker_running" config="template">
+                        <script type="text/plain">
+                            {{ if value }}
+                                <button class="exec" data-exec="?/stop_worker"><i class="ti ti-stop red mr5"></i>@(Stop)</button>
+                                <button class="exec" data-exec="?/scrape_now"><i class="ti ti-cloud-download orange mr5"></i>@(Run Scraper)</button>
+                                <button class="exec" data-exec="?/restart_worker"><i class="ti ti-refresh orange mr5"></i>@(Restart)</button>
+                            {{ else }}
+                                <button class="exec" data-exec="?/start_worker"><i class="ti ti-play green mr5"></i>@(Start Worker)</button>
+                            {{ fi }}
+                        </script>
+                    </ui-bind>
+                </div>
+            </div>
+
+            <div class="stats-container">
+                <div class="stat-card">
+                    <span class="stat-label">@(Programs in DB)</span>
+                    <ui-bind path="?.stats.programs_found" config="text" class="stat-value">0</ui-bind>
+                </div>
+                <div class="stat-card" style="border-left-color: #34A853;">
+                    <span class="stat-label">@(Successful Scrapes)</span>
+                    <ui-bind path="?.stats.scrapes_successful" config="text" class="stat-value">0</ui-bind>
+                </div>
+                <div class="stat-card" style="border-left-color: #FBBC05;">
+                    <span class="stat-label">@(Queued Notifications)</span>
+                    <ui-bind path="?.stats.notifications_sent" config="text" class="stat-value">0</ui-bind>
+                </div>
+                <div class="stat-card" style="border-left-color: #EA4335;">
+                    <span class="stat-label">@(Worker Errors)</span>
+                    <ui-bind path="?.stats.errors" config="text" class="stat-value">0</ui-bind>
+                </div>
+            </div>
+            
+            <div class="bg-white border radius padding">
+                <div class="caption mb10"><i class="ti ti-history mr5"></i>@(Recent Automation Activity)</div>
+                <ui-bind path="?.recent_activity" config="template">
+                    <script type="text/plain">
+                        {{ if !value || !value.length }}
+                            <div class="empty">@(No recent activity recorded.)</div>
+                        {{ else }}
+                            <div class="fs12">
+                                {{ foreach a in value }}
+                                    <div class="border-bottom padding5">
+                                        <span class="gray mr10">{{ a.created_at | format('HH:mm:ss') }}</span>
+                                        <span class="{{ a.level === 'error' ? 'red' : 'blue' }} b mr10">{{ a.level | uppercase }}</span>
+                                        <span>{{ a.message }}</span>
+                                    </div>
+                                {{ end }}
+                            </div>
+                        {{ fi }}
+                    </script>
+                </ui-bind>
+            </div>
+		</div>
+
+        <!-- PROGRAMS TAB -->
+        <div class="tab-content" data-id="programs">
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="caption mb10"><i class="ti ti-list mr5"></i>@(Channels)</div>
+                    <div class="border radius bg-white overflow-hidden">
+                        <ui-bind path="?.channels" config="template">
+                            <script type="text/plain">
+                                {{ if !value || !value.length }}
+                                    <div class="empty">@(No channels found)</div>
+                                {{ else }}
+                                    {{ foreach c in value }}
+                                        <div class="channel-item exec {{ if ?.selected_channel_id == c.id }}selected{{ fi }}" data-exec="?/select_channel" data-id="{{ c.id }}">
+                                            <i class="ti ti-tv"></i>{{ c.name }}
+                                        </div>
+                                    {{ end }}
+                                {{ fi }}
+                            </script>
+                        </ui-bind>
+                    </div>
+                </div>
+                <div class="col-md-9">
+                    <div class="caption mb10 flex space-between align-center">
+                        <div>
+                            <i class="ti ti-calendar mr5"></i>@(Programs List) 
+                            <ui-bind path="?.selected_channel_name" config="text" class="b ml5 blue"></ui-bind>
+                        </div>
+                        <div class="fs12 gray">
+                            <ui-bind path="?.programs.length" config="text" class="b mr5"></ui-bind> @(programs found)
+                        </div>
+                    </div>
+                    
+                    <div class="border radius padding bg-smoke" style="min-height: 400px; max-height: 600px; overflow-y: auto;">
+                        <ui-bind path="?.programs" config="template">
+                            <script type="text/plain">
+                                {{ if !value || !value.length }}
+                                    <div class="empty-state">
+                                        <i class="ti ti-calendar-xmark"></i>
+                                        @(No programs found for this channel.)<br>
+                                        <span class="fs12">@(Try selecting a different channel or triggering a scrape.)</span>
+                                    </div>
+                                {{ else }}
+                                    {{ foreach p in value }}
+                                        <div class="program-card">
+                                            <div class="program-header">
+                                                <span><i class="ti ti-clock mr5"></i>{{ p.start_time | format('HH:mm') }} - {{ if p.stop_time }}{{ p.stop_time | format('HH:mm') }}{{ fi }}</span>
+                                                <span class="gray"><i class="ti ti-calendar mr5"></i>{{ p.date | format('dd.MM.yyyy') }}</span>
+                                            </div>
+                                            <div class="program-title">{{ p.title }}</div>
+                                            <div class="program-meta b"><i class="ti ti-tag mr5"></i>{{ p.category }}</div>
+                                            {{ if p.description }}
+                                                <div class="mt10 fs12 gray-dark border-top-dotted pt10">{{ p.description }}</div>
+                                            {{ fi }}
+                                        </div>
+                                    {{ end }}
+                                {{ fi }}
+                            </script>
+                        </ui-bind>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MESSAGES TAB -->
+        <div class="tab-content" data-id="messages">
+             <div class="flex space-between align-center mb10">
+                <div class="caption"><i class="ti ti-email mr5"></i>@(Generated Notifications)</div>
+                <div class="toolbar pin">
+                    <ui-component name="input" path="?.notifications_date" config="type:date;icon:ti ti-calendar;placeholder:@(Filter by date)" class="inline mr10" style="width:150px"></ui-component>
+                    <button class="exec" data-exec="?/refresh_notifications"><i class="ti ti-refresh mr5"></i>@(Refresh)</button>
+                </div>
+             </div>
+             
+             <ui-component name="datagrid" path="?.notifications" config="{ checkboxes: false, filter: true, margin: 10, click: ?/copy_message_row }">
+                <script type="text/plain">
+                    [
+                        { name: 'created_at', text: '@(Generated)', width: 140, format: '[date]', align: 'center' },
+                        { name: 'template', text: '@(Message Content)', width: 500, template: '<div class="fs11 monospace" style="white-space:pre-wrap;line-height:1.2;padding:5px 0">{{ template }}</div>' },
+                        { name: 'sent', text: '@(Status)', width: 100, template: '{{ if sent }}<span class="green"><i class="ti ti-check-circle mr5"></i>Sent</span>{{ else }}<span class="orange"><i class="ti ti-clock mr5"></i>Pending</span>{{ fi }}', align: 'center' },
+                        { name: 'sent_at', text: '@(Sent At)', width: 140, format: '[date]', align: 'center' },
+                        { type: 'controls', width: 80, template: '<button name="copy" title="Copy to clipboard"><i class="ti ti-copy"></i></button>' }
+                    ]
+                </script>
+             </ui-component>
+             <div class="help mt5">
+                <i class="ti ti-mouse-pointer mr5"></i>@(Click on a row or use the copy button to copy message content to clipboard.)
+             </div>
+        </div>
+
+        <!-- TEMPLATES TAB -->
+        <div class="tab-content" data-id="templates">
+            <div class="flex space-between align-center mb10">
+                <div class="caption"><i class="ti ti-layers mr5"></i>@(Message Templates)</div>
+                <button class="exec" data-exec="?/edit_template"><i class="ti ti-plus-circle green mr5"></i>@(Create New Template)</button>
+            </div>
+            
+            <ui-component name="datagrid" path="?.templates" config="{ checkboxes: false, filter: false, button: ?/edit_template }">
+                <script type="text/plain">
+                    [
+                        { name: 'name', text: '@(Name)', width: 200, bold: true },
+                        { name: 'event_type', text: '@(Event Type)', width: 150, template: '<span class="badge badge-blue">{{ event_type }}</span>' },
+                        { name: 'description', text: '@(Description)', width: 300 },
+                        { name: 'active', text: '@(Active)', width: 80, type: 'boolean', align: 'center' },
+                        { name: 'updated_at', text: '@(Updated)', width: 150, format: '[date]', align: 'center' },
+                        { type: 'controls', template: '<button name="edit" title="Edit template"><i class="ti ti-pencil"></i></button>' }
+                    ]
+                </script>
+             </ui-component>
+             <div class="help mt5">
+                @(Templates use the <code>@{model.field}</code> syntax for dynamic data injection.)
+             </div>
+        </div>
+	</div>
+</ui-plugin>
+
+<!-- Template Edit Form -->
+<ui-component name="box" path="tvprogram_template_form" config="if:true;title:@(Edit Template);icon:ti ti-layers;autofocus:true;submit:?/submit_template;width:600" class="hidden">
+	<div class="padding">
+        <div class="row">
+            <div class="col-md-8">
+                <ui-component name="input" path="?.form.name" config="required:true;maxlength:100" class="m">@(Template Name)</ui-component>
+            </div>
+            <div class="col-md-4">
+                <ui-component name="input" path="?.form.event_type" config="required:true;maxlength:50;dirsource:starting|@(Program Starting)" class="m">@(Event Type)</ui-component>
+            </div>
+        </div>
+        <ui-component name="textarea" path="?.form.content" config="required:true;height:200;monospace:true;placeholder:@(Enter template content here...)" class="m">@(Template Content)</ui-component>
+        
+        <div class="bg-smoke padding radius mb10">
+            <div class="fs11 b gray mb5">@(AVAILABLE PLACEHOLDERS:)</div>
+            <div class="fs11 monospace">
+                <code>@{model.title}</code>, <code>@{model.channel_name}</code>, <code>@{model.category}</code>, <code>@{model.start_time}</code>
+            </div>
+        </div>
+
+        <ui-component name="input" path="?.form.description" config="maxlength:200" class="m">@(Description / Notes)</ui-component>
+        <ui-component name="checkbox" path="?.form.active">@(Template is active and can be used by the worker)</ui-component>
+	</div>
+	<nav>
+		<button name="submit"><i class="ti ti-check-circle"></i>@(Save Template)</button>
+		<button name="cancel">@(Cancel)</button>
+	</nav>
+</ui-component>
+
+<script>
+	PLUGIN(function(exports) {
+
+        exports.form = {};
+
+		exports.reload = function() {
+			BREADCRUMB.add('TV Program', NAV.url);
+			exports.refresh();
+		};
+
+        exports.tab = function(el) {
+            var id = el.attrd('id');
+            exports.element.find('.tab-item').removeClass('selected');
+            el.addClass('selected');
+            exports.element.find('.tab-content').removeClass('selected');
+            exports.element.find('.tab-content[data-id="' + id + '"]').addClass('selected');
+            
+            if (id === 'messages') exports.refresh_notifications();
+            if (id === 'templates') exports.refresh_templates();
+            if (id === 'programs') exports.refresh_channels();
+        };
+
+		exports.refresh = function() {
+			exports.tapi('tvprogram_worker_status', function(response) {
+				exports.set('worker_running', response.worker_running);
+				if (response.worker_running) {
+					exports.refresh_stats();
+                    exports.refresh_activity();
+				}
+				exports.refresh_channels();
+                
+                // Refresh current tab data
+                var currentTab = exports.element.find('.tab-item.selected').attrd('id');
+                if (currentTab === 'messages') exports.refresh_notifications();
+                if (currentTab === 'templates') exports.refresh_templates();
+			});
+		};
+
+        exports.refresh_activity = function() {
+            exports.tapi('tvprogram_get_logs?limit=10', function(response) {
+                if (response.success)
+                    exports.set('recent_activity', response.data);
+            });
+        };
+
+		exports.refresh_stats = function() {
+			exports.tapi('tvprogram_stats', function(response) {
+				if (response.success)
+					exports.set('stats', response.data);
+			});
+		};
+
+		exports.refresh_channels = function() {
+			exports.tapi('tvprogram_get_channels', function(response) {
+				exports.set('channels', response);
+                if (response.length && !exports.model.selected_channel_id) {
+                     exports.select_channel(response[0].id);
+                }
+			});
+		};
+
+		exports.select_channel = function(el) {
+			var id = typeof el === 'object' ? el.attrd('id') : el;
+			var channels = exports.model.channels || [];
+			var channel = channels.find(c => c.id == id);
+			
+			exports.set('selected_channel_id', id);
+			if (channel) exports.set('selected_channel_name', channel.name);
+			
+			exports.refresh_programs(id);
+		};
+
+		exports.refresh_programs = function(channelId) {
+			if (!channelId) return;
+			exports.tapi('tvprogram_get_programs?channel_id=' + channelId, function(response) {
+				exports.set('programs', response);
+			});
+		};
+
+        exports.refresh_notifications = function() {
+            var date = exports.model.notifications_date ? exports.model.notifications_date.format('yyyy-MM-dd') : '';
+            exports.tapi('tvprogram_get_notifications?date=' + date, function(response) {
+                exports.set('notifications', response);
+            });
+        };
+
+        // Watch for date changes in notifications
+        exports.watch('notifications_date', function() {
+            exports.refresh_notifications();
+        });
+
+        exports.copy_message_row = function(row, el, e) {
+            // Handle copy button specifically or just click on row
+            if (row && row.template) {
+                exports.copy_to_clipboard(row.template);
+            }
+        };
+
+        exports.copy_to_clipboard = function(text) {
+            var textArea = document.createElement("textarea");
+            textArea.value = text;
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                EXEC('-notify/success', '@(Message copied to clipboard)');
+            } catch (err) {
+                EXEC('-notify/error', '@(Could not copy text)');
+            }
+            document.body.removeChild(textArea);
+        };
+
+        exports.refresh_templates = function() {
+            exports.tapi('tvprogram_get_templates', function(response) {
+                exports.set('templates', response);
+            });
+        };
+
+        // Template Management
+        exports.edit_template = function(row) {
+            var form = row || { active: true, event_type: 'starting' };
+            if (form.template && !form.content) form.content = form.template;
+            
+            exports.set('form', CLONE(form));
+            SETTER('box/show', 'tvprogram_template_form');
+        };
+
+        exports.submit_template = function(hide) {
+            var model = exports.model.form;
+            exports.tapi('tvprogram_save_template', model, function(response) {
+                if (response.success) {
+                    EXEC('-notify/success', '@(Template saved successfully)');
+                    hide();
+                    exports.refresh_templates();
+                } else {
+                    EXEC('-notify/error', response.error || '@(Error saving template)');
+                }
+            });
+        };
+
+		exports.start_worker = function() {
+			exports.tapi('tvprogram_start_worker', function(response) {
+				if (response.success) {
+					EXEC('-notify/success', response.message);
+					setTimeout(exports.refresh, 1000);
+				}
+			});
+		};
+
+		exports.stop_worker = function() {
+			EXEC('-approve/show', '@(Are you sure you want to stop the TV worker?)', '@(Stop)', function() {
+				exports.tapi('tvprogram_stop_worker', function(response) {
+					if (response.success) {
+						EXEC('-notify/success', response.message);
+						exports.refresh();
+					}
+				});
+			});
+		};
+
+		exports.restart_worker = function() {
+			EXEC('-approve/show', '@(Are you sure you want to restart the TV worker?)', '@(Restart)', function() {
+				exports.tapi('tvprogram_restart_worker', function(response) {
+					if (response.success) {
+						EXEC('-notify/success', response.message);
+						setTimeout(exports.refresh, 1000);
+					}
+				});
+			});
+		};
+
+		exports.scrape_now = function() {
+			exports.tapi('tvprogram_scrape_now', function(response) {
+				if (response.success) {
+					EXEC('-notify/success', 'Scraping triggered successfully');
+				} else {
+					EXEC('-notify/error', response.error);
+				}
+			});
+		};
+
+		exports.logs = function() {
+			var windowId = 'tv-logs';
+            
+            // Close existing window if open
+            var index = common.windows.findIndex(w => w.id === windowId);
+            if (index !== -1) {
+                common.windows.splice(index, 1);
+            }
+
+			SETTER('loading/show');
+			exports.tapi('tvprogram_get_logs?limit=200', function(response) {
+				SETTER('loading/hide');
+				if (!response.success) return;
+				
+				var html = '<div style="background:#1e1e1e;color:#d4d4d4;padding:15px;font-family:monospace;font-size:12px;height:100%;overflow:auto;line-height:1.5;">';
+                if (!response.data.length) {
+                    html += '<div style="color:#888">@(No logs available.)</div>';
+                } else {
+                    response.data.forEach(function(log) {
+                        var color = log.level === 'error' ? '#f44336' : log.level === 'warn' ? '#ff9800' : '#4caf50';
+                        html += `<div style="margin-bottom:2px;border-bottom:1px solid #333;padding-bottom:2px;"><span style="color:#888;margin-right:8px;">[${new Date(log.created_at).toLocaleString()}]</span> <span style="color:${color};font-weight:bold;display:inline-block;width:60px;">[${log.level.toUpperCase()}]</span> ${log.message}</div>`;
+                    });
+                }
+				html += '</div>';
+
+				common.windows.push({
+					id: windowId,
+					offset: { x: 200, y: 150, width: 900, height: 600, minwidth: 600, minheight: 400 },
+					title: 'TV Worker Automation Logs',
+					icon: 'ti-file-text',
+					html: html,
+					actions: { minimize: true, maximize: true, move: true, resize: true, close: true }
+				});
+				UPD('common.windows');
+			});
+		};
+
+        // Auto-refresh every 30 seconds if dashboard is visible
+        setInterval(function() {
+            var currentTab = exports.element.find('.tab-item.selected').attrd('id');
+            if (currentTab === 'dashboard') {
+                exports.refresh();
+            }
+        }, 30000);
+	});
+</script>

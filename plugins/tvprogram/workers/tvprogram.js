@@ -23,6 +23,7 @@ let state = {
         scrapes_attempted: 0,
         scrapes_successful: 0,
         programs_found: 0,
+        notifications_sent: 0,
         errors: 0
     }
 };
@@ -33,16 +34,12 @@ async function init(msg) {
         // Load configuration from database
         await loadConfig();
         
-        // Register worker status
-        // We use a simple local update or a DB call if needed. 
-        // servicefoot uses a 'worker_status' table. We might not have one for tvprogram specifically 
-        // in the db.sql I wrote, but I can add logging.
-        
         startHeartbeat();
         
         if (state.config.tvprogram_power === 'on') {
             state.isRunning = true;
             startScheduler();
+            startNotificationMonitor();
             // Initial scrape if needed or wait for scheduler
              scrapeAll();
         }
@@ -74,7 +71,7 @@ function startHeartbeat() {
     }, HEARTBEAT_INTERVAL);
 }
 
-// Scheduler
+// Scheduler for scraping
 function startScheduler() {
     const interval = parseInt(state.config.tvprogram_interval) || SCRAPE_INTERVAL;
     setInterval(() => {
@@ -82,6 +79,163 @@ function startScheduler() {
             scrapeAll();
         }
     }, interval);
+}
+
+// Monitor for upcoming programs
+function startNotificationMonitor() {
+    setInterval(async () => {
+        if (!state.isRunning || state.isPaused) return;
+        await checkUpcomingPrograms();
+    }, 60000); // Check every minute
+}
+
+// Check for upcoming programs
+async function checkUpcomingPrograms() {
+    try {
+        const now = new Date();
+        const warningTime = now.add('5 minutes'); // Notify 5 minutes before
+        
+        // Find programs starting in exactly 5 minutes (approx)
+        // We look for programs starting between now and now+6m to be safe, but filter by notified status
+        
+        // Since SQL matching exact minute is better:
+        // We want programs where start_time is roughly warningTime
+        
+        const startStr = warningTime.format('HH:mm');
+        const dateStr = now.format('yyyy-MM-dd');
+
+        // We need to query programs that match this time
+        // Note: start_time in DB is TIMESTAMP.
+        
+        // Let's use a query that finds programs starting within the next 5-6 minutes 
+        // that haven't been notified yet.
+        
+        QB.query(`
+            SELECT p.*, c.name as channel_name 
+            FROM tv_programs p
+            JOIN tv_channels c ON p.channel_id = c.id
+            WHERE p.date = $1 
+            AND p.start_time::time BETWEEN $2::time AND ($2::time + interval '1 minute')
+            AND NOT EXISTS (
+                SELECT 1 FROM tv_programs_queue q 
+                WHERE q.program_id = p.id AND q.event_type = 'starting'
+            )
+        `, [dateStr, startStr], async (err, programs) => {
+            if (err) return await log('error', 'Error checking upcoming programs', { error: err.message });
+            
+            if (programs && programs.length > 0) {
+                for (const prog of programs) {
+                    await processUpcomingProgram(prog);
+                }
+            }
+        });
+        
+    } catch (err) {
+        await log('error', 'Notification monitor failed', { error: err.message });
+    }
+}
+
+async function processUpcomingProgram(program) {
+    try {
+        await queueNotification('tv_program_starting', program);
+        
+        // Mark as notified
+        QB.insert('tv_programs_queue', {
+            program_id: program.id,
+            event_type: 'starting'
+        });
+        
+        await log('info', `Queued notification for ${program.title} on ${program.channel_name}`);
+        
+    } catch (err) {
+        await log('error', 'Failed to process upcoming program', { program: program.title, error: err.message });
+    }
+}
+
+// Queue notification
+async function queueNotification(templateName, data) {
+    return new Promise((resolve, reject) => {
+        // Get template
+        QB.find('message_templates')
+            .where('name', templateName)
+            .where('active', true)
+            .callback((err, templates) => {
+                if (err) return reject(err);
+                
+                if (!templates || templates.length === 0) {
+                    log('warn', `Template not found: ${templateName}`);
+                    return resolve();
+                }
+                
+                const template = templates[0];
+                
+                // Render template
+                const rendered = VIEWCOMPILE(template.template, data);
+                
+                // Queue notification
+                QB.insert('notification_queue', {
+                    service: 'tvprogram',
+                    template: rendered,
+                    data: data,
+                    date: new Date().format('yyyy-MM-dd'),
+                    sent: false
+                }).callback((err, response) => {
+                    if (err) return reject(err);
+                    // Send notification immediately (mock for now, or use servicefoot's logic)
+                    sendNotification(rendered);
+                    resolve(response);
+                });
+            });
+    });
+}
+
+// Send notification (Mock SMS/Push)
+async function sendNotification(content) {
+    try {
+        // Here we would call the SMS API like servicefoot does.
+        // For now, we simulate success.
+        
+        // If we want to use the same SMS endpoint as servicefoot:
+        if (state.config.sms_endpoint) {
+             REQUEST({
+                url: state.config.sms_endpoint,
+                query: {
+                    content: content,
+                    from: state.config.sms_from || 'TVGuide',
+                    cible: state.config.sms_target || 'subscribers'
+                }, 
+                callback: async function(err, response) {
+                    if (err) {
+                        log('error', 'Failed to send SMS', { error: err.message });
+                    } else {
+                         await markNotificationSent(content);
+                    }
+                }
+            });
+        } else {
+            // Just log it if no SMS config
+            await log('info', 'SIMULATED Notification sent', { content });
+            await markNotificationSent(content);
+        }
+
+        state.stats.notifications_sent++;
+        
+    } catch (err) {
+        await log('error', 'Failed to send notification', { error: err.message });
+    }
+}
+
+// Mark notification as sent
+async function markNotificationSent(content) {
+    return new Promise((resolve, reject) => {
+        QB.modify('notification_queue', {
+            sent: true,
+            sent_at: new Date()
+        }).where('template', content).where('sent', false).callback((err, response) => {
+            if (err) return reject(err);
+            resolve(response);
+        });
+    });
 }
 
 // Main Scrape Function

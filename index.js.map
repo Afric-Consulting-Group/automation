@@ -202,6 +202,37 @@
 			"method": "API",
 			"url": "/api/",
 			"auth": 1,
+			"id": "tvprogram_get_notifications",
+			"name": "Get Notifications",
+			"query": "date:Date"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"id": "tvprogram_get_templates",
+			"name": "Get Templates"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"params": "id:string",
+			"id": "tvprogram_get_template",
+			"name": "Get Template"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"id": "tvprogram_save_template",
+			"input": "id:Number,name:String,event_type:String,content:String",
+			"name": "Save Template"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
 			"id": "tvprogram_start_worker",
 			"name": "Start TV Worker"
 		},
@@ -367,6 +398,9 @@
 			"url": "/api/notifications"
 		},
 		{
+			"url": "/tvprogram/"
+		},
+		{
 			"method": "GET",
 			"url": "/auth/",
 			"auth": 2
@@ -374,12 +408,12 @@
 		{
 			"method": "GET",
 			"url": "/*",
-			"auth": 1
+			"auth": 2
 		},
 		{
 			"method": "GET",
 			"url": "/*",
-			"auth": 2
+			"auth": 1
 		},
 		{
 			"method": "SOCKET",
@@ -537,6 +571,21 @@
 		{
 			"name": "TVProgram/get_logs",
 			"query": "level:String,limit:Number"
+		},
+		{
+			"name": "TVProgram/get_notifications",
+			"query": "date:Date"
+		},
+		{
+			"name": "TVProgram/get_templates"
+		},
+		{
+			"name": "TVProgram/get_template",
+			"params": "id:Number"
+		},
+		{
+			"name": "TVProgram/save_template",
+			"input": "id:Number,name:String,event_type:String,content:String"
 		},
 		{
 			"name": "USSDApp/list",

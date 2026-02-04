@@ -1,6 +1,5 @@
-
 -- Teams table
-CREATE TABLE teams (
+CREATE TABLE IF NOT EXISTS teams (
     id SERIAL PRIMARY KEY,
     unique_id VARCHAR(100) UNIQUE NOT NULL,
     name VARCHAR(255) NOT NULL,
@@ -10,7 +9,7 @@ CREATE TABLE teams (
 );
 
 -- Matches table
-CREATE TABLE matches (
+CREATE TABLE IF NOT EXISTS matches (
     id SERIAL PRIMARY KEY,
     fixture_id INTEGER UNIQUE NOT NULL,
     homeid_awayid VARCHAR(100) NOT NULL,
@@ -25,7 +24,7 @@ CREATE TABLE matches (
 );
 
 -- Match events tracking tables
-CREATE TABLE match_events_notstarted (
+CREATE TABLE IF NOT EXISTS match_events_notstarted (
     id SERIAL PRIMARY KEY,
     unique_key VARCHAR(100) UNIQUE NOT NULL,
     event_name VARCHAR(50) NOT NULL,
@@ -38,7 +37,7 @@ CREATE TABLE match_events_notstarted (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE match_events_started (
+CREATE TABLE IF NOT EXISTS match_events_started (
     id SERIAL PRIMARY KEY,
     unique_key VARCHAR(100) UNIQUE NOT NULL,
     event_name VARCHAR(50) NOT NULL,
@@ -51,7 +50,7 @@ CREATE TABLE match_events_started (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE match_events_addedtime (
+CREATE TABLE IF NOT EXISTS match_events_addedtime (
     id SERIAL PRIMARY KEY,
     unique_key VARCHAR(100) UNIQUE NOT NULL,
     event_name VARCHAR(50) NOT NULL,
@@ -64,7 +63,7 @@ CREATE TABLE match_events_addedtime (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE match_events_halftime (
+CREATE TABLE IF NOT EXISTS match_events_halftime (
     id SERIAL PRIMARY KEY,
     unique_key VARCHAR(100) UNIQUE NOT NULL,
     event_name VARCHAR(50) NOT NULL,
@@ -77,7 +76,7 @@ CREATE TABLE match_events_halftime (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE match_events_finished (
+CREATE TABLE IF NOT EXISTS match_events_finished (
     id SERIAL PRIMARY KEY,
     unique_key VARCHAR(100) UNIQUE NOT NULL,
     event_name VARCHAR(50) NOT NULL,
@@ -91,7 +90,7 @@ CREATE TABLE match_events_finished (
 );
 
 -- Live events (goals, cards, substitutions)
-CREATE TABLE live_events (
+CREATE TABLE IF NOT EXISTS live_events (
     id SERIAL PRIMARY KEY,
     unique_key VARCHAR(100) UNIQUE NOT NULL,
     external_id VARCHAR(50) NOT NULL,
@@ -109,28 +108,14 @@ CREATE TABLE live_events (
 );
 
 -- General events log
-CREATE TABLE events_log (
+CREATE TABLE IF NOT EXISTS events_log (
     id SERIAL PRIMARY KEY,
     date DATE NOT NULL,
     content TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Notification queue
-CREATE TABLE notification_queue (
-    id SERIAL PRIMARY KEY,
-    template TEXT NOT NULL,
-    data JSONB NOT NULL,
-    date DATE NOT NULL,
-    sent BOOLEAN DEFAULT FALSE,
-    sent_at TIMESTAMP,
-    error TEXT,
-    retry_count INTEGER DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-
-
+-- Notification queue is now in database.sql
 
 -- Insert default configuration
 INSERT INTO config (name, value, description) VALUES
@@ -262,9 +247,8 @@ https://live-score-api.com/',
 ON CONFLICT (name) DO NOTHING;
 
 -- Create indexes for performance
-CREATE INDEX idx_notification_queue_processing ON notification_queue(sent, created_at) WHERE sent = FALSE;
-CREATE INDEX idx_worker_logs_recent ON worker_logs(created_at DESC, level);
-CREATE INDEX idx_worker_status_active ON worker_status(status, last_heartbeat);
+CREATE INDEX IF NOT EXISTS idx_notification_queue_processing ON notification_queue(sent, created_at) WHERE sent = FALSE;
+-- worker_logs and worker_status now handled in database.sql or shared
 
 -- Create function to update timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -276,17 +260,20 @@ END;
 $$ language 'plpgsql';
 
 -- Add triggers for updated_at
-CREATE TRIGGER update_config_updated_at BEFORE UPDATE ON config
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_teams_updated_at BEFORE UPDATE ON teams
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_matches_updated_at BEFORE UPDATE ON matches
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_message_templates_updated_at BEFORE UPDATE ON message_templates
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_worker_status_updated_at BEFORE UPDATE ON worker_status
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+-- We check existence of triggers would be complex in SQL, usually they are idempotent if name is same and REPLACE is used if it was a function.
+-- Triggers themselves don't have CREATE OR REPLACE.
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_config_updated_at') THEN
+        CREATE TRIGGER update_config_updated_at BEFORE UPDATE ON config FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_teams_updated_at') THEN
+        CREATE TRIGGER update_teams_updated_at BEFORE UPDATE ON teams FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_matches_updated_at') THEN
+        CREATE TRIGGER update_matches_updated_at BEFORE UPDATE ON matches FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_message_templates_updated_at') THEN
+        CREATE TRIGGER update_message_templates_updated_at BEFORE UPDATE ON message_templates FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+END $$;

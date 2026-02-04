@@ -389,14 +389,359 @@ Core UX principles:
 The goal is to provide a **harmonized and compliant interface** that agents can use for long periods without confusion or fatigue, while still exposing all necessary operational controls.
 
 ---
+Perfect. I’ll write this as a **clear, standalone section** that fits naturally into the spec, focused on **templates + notification/message queue**, and aligned with the operational reality.
 
-## Summary
+---
 
-In summary, the UI layer of the platform is designed to:
+## Templates and Notification Queue System
 
-* Handle large and growing datasets efficiently
-* Provide clear operational visibility into automation processes
-* Offer direct control over worker execution
-* Reuse standardized UI components across plugins
-* Remain simple, functional, and non-overwhelming
+A core output of every automation workflow is the **notification queue**. Regardless of how complex or different the underlying automation logic is, **every automation plugin must ultimately produce human-readable messages** that operational agents can review, copy, and paste into downstream platforms.
 
+This notification queue is therefore a **mandatory, shared concept across the entire platform**.
+
+---
+
+## Notification Queue as a Standardized Output Layer
+
+Each automation system (plugin) must expose a **notification list view**, where all generated messages are displayed in a clear, structured, and searchable way.
+
+This queue allows agents to:
+
+* View all available messages for a given service
+* Filter messages by date (day, week, month)
+* Quickly copy message content
+* Use the messages in external platforms (operator systems, dashboards, partner tools)
+
+The notification queue represents the **final operational deliverable** of the automation process.
+
+---
+
+## Template-Based Message Generation
+
+To avoid hard-coded message formatting, the platform introduces a **template system**.
+
+Messages are not constructed directly inside automation logic. Instead:
+
+* Automation logic produces **structured data**
+* A **template engine** formats that data into a final message layout
+* The result is stored and displayed in the notification queue
+
+The template defines **how content is presented**, such as:
+
+* Greetings
+* Message structure
+* Line breaks
+* Ordering of information
+* Consistent layout across messages
+
+The objective is not to support multiple template types or formats, but to provide **a single, consistent template structure** that can evolve without code changes.
+
+---
+
+## Editable Templates per Plugin
+
+Each plugin includes a **Templates section** in its UI.
+
+Key principles:
+
+* A plugin may have **one or more templates**
+* Even a single template must be editable
+* Templates are **not hard-coded**
+* Templates can be updated directly from the UI
+
+This allows:
+
+* Business users to adjust message wording
+* Minor layout changes without redeployment
+* Fast adaptation to operator or partner requirements
+
+Templates are therefore treated as **configuration**, not logic.
+
+---
+
+## Messages Listing and Historical Access
+
+In addition to templates, each plugin provides a **Messages section**, which lists all generated notifications.
+
+This section allows agents to:
+
+* View all messages generated for the current day
+* Browse messages over longer periods (weekly, monthly)
+* Validate content before use
+* Reuse past messages if needed
+
+This separation between **template management** and **message listing** improves clarity and usability.
+
+---
+
+## Operational Flow Summary
+
+The expected flow is:
+
+1. Worker executes automation logic
+2. Structured data is produced
+3. Template engine formats the data
+4. Final message is stored in the notifications table
+5. Message appears in the plugin’s notification queue
+6. Agents review, copy, and use the message externally
+
+This flow is consistent across all plugins.
+
+---
+
+## Architectural Importance
+
+The template and notification queue system is critical because it:
+
+* Standardizes outputs across heterogeneous automations
+* Decouples message formatting from automation logic
+* Reduces maintenance overhead
+* Improves operational flexibility
+* Prepares the platform for future direct integrations with operator systems
+
+Example for reference and use cases about the view template engine, refer to the service foot db.sql file cause there is some insert queries of templates
+
+
+## User Interface (UI)
+### UI Philosophy and Scope
+
+The user interface of the platform is designed as an **operational control surface**, not a marketing interface. Its primary purpose is to allow agents and administrators to **observe, control, and interact with automation systems** efficiently, even as data volume and system complexity grow.
+
+The UI must remain:
+
+* Simple
+* Predictable
+* Consistent
+* Scalable
+
+All UI components are built using **Total.js UI components (JComponents)**, following official Total.js documentation and best practices. No external UI frameworks are introduced.
+
+---
+
+## Global UI Architecture
+
+The UI is divided into two main layers:
+
+1. **Application-wide Admin Panel**
+2. **Plugin-specific UI modules**
+
+All plugin UIs are rendered **inside the Admin Panel layout**.
+
+---
+
+### Application-Wide Admin Panel
+
+The Admin Panel defines the **global UI shell** of the platform.
+
+It includes:
+
+* The main layout
+* Shared UI dependencies
+* Common styles and scripts
+* Global UI components (sidebar, header, content container)
+
+This layout is defined in the **application-wide views** and is reused across all plugins.
+
+#### Responsibilities of the Admin Panel
+
+* Provide a unified visual structure
+* Host plugin UIs
+* Expose navigation and global context
+* Ensure UI consistency across the platform
+
+---
+
+### Plugin Navigation and Discovery
+
+The left-side navigation (sidebar menu) displays the list of available plugins.
+
+This menu is **dynamic**, not hard-coded.
+
+Source of truth:
+
+* `Total.plugins`
+
+Mechanism:
+
+* Each registered plugin exposes metadata
+* The Admin Panel controller retrieves this metadata
+* The plugin list is rendered automatically in the sidebar
+
+Controller location:
+
+* `modules/openplatform.js`
+
+This controller:
+
+* Reads registered plugins
+* Passes plugin metadata to the Admin Panel views
+* Ensures new plugins appear in the UI without manual wiring
+
+This makes plugin UI registration **automatic and declarative**.
+
+---
+
+## Plugin UI Model
+
+Each plugin is responsible for its own UI, but must respect the global layout and component system.
+
+A plugin UI typically includes:
+
+* One or more main views
+* Data tables
+* Control panels
+* Forms and modals
+* Worker monitoring tools
+
+Plugins are free to design their internal UI logic, but must:
+
+* Use Total.js UI components
+* Follow the reference patterns
+* Integrate cleanly into the Admin Panel shell
+
+---
+
+## Reference UI Plugin: `ussdapp`
+
+The `ussdapp` plugin is the **canonical UI reference**.
+
+It exists to demonstrate:
+
+* Correct UI composition
+* Proper use of JComponents
+* Expected layout structure
+* Interaction patterns between UI and backend
+
+From a UI standpoint, `ussdapp` shows:
+
+* How to structure plugin views
+* How to embed views into the Admin Panel
+* How to use:
+
+  * Data tables
+  * Panels and windows
+  * Modals
+  * Forms
+* How to trigger backend actions from UI controls
+
+Developers are expected to **study and reuse UI patterns from `ussdapp`**, not reinvent them.
+
+---
+
+## Core UI Components
+
+### 1. Data Tables (Mandatory)
+
+Data tables are the **primary visualization component**.
+
+Used for:
+
+* Notification queues
+* Message listings
+* Logs
+* Historical data
+
+Requirements:
+
+* Must handle large datasets
+* Must support filtering and pagination
+* Must allow quick copy of content
+* Must be reusable across plugins
+
+The same data table component is reused everywhere to ensure familiarity and performance.
+
+---
+
+### 2. Control Panels and Windows
+
+Plugins may expose control panels using Total.js window components.
+
+These panels allow:
+
+* Starting workers
+* Pausing workers
+* Resuming workers
+* Restarting workers
+* Viewing worker state and statistics
+
+Windows must be:
+
+* Collapsible
+* Expandable
+* Closable
+* Non-blocking to the rest of the UI
+
+This creates a **desktop-like operational experience**.
+
+---
+
+### 3. Modals and Forms
+
+Modals are used when:
+
+* Creating or editing templates
+* Inserting or updating configuration
+* Triggering manual actions
+
+Forms are simple, functional, and focused on correctness, not design complexity.
+
+---
+
+## Template and Message UI Integration
+
+Each plugin UI includes **two clearly separated sections**:
+
+1. **Templates**
+
+   * Editable message templates
+   * Uses a template engine
+   * Stored as configuration
+   * Updated without redeploying code
+
+2. **Messages / Notifications**
+
+   * Lists generated messages
+   * Filterable by date
+   * Ready for copy-paste
+   * Reflects the final output of automation
+
+This separation ensures clarity between **how messages are built** and **what messages exist**.
+
+---
+
+## UI Consistency and Compliance
+
+UI consistency is mandatory.
+
+All plugins must:
+
+* Use the same base layout
+* Use the same component library
+* Follow the same interaction logic
+* Respect naming and structural conventions
+
+Reference plugins exist to **define the standard**, not as optional examples.
+
+This is critical for:
+
+* Maintainability
+* Security
+* Documentation generation
+* Onboarding new developers
+* Long-term evolution of the platform
+
+---
+
+## UX Constraints
+
+The UI must not:
+
+* Overload agents with visual noise
+* Introduce unnecessary animations
+* Require training to understand
+
+Instead, it must:
+
+* Surface information clearly
+* Minimize cognitive load
+* Allow agents to focus on execution

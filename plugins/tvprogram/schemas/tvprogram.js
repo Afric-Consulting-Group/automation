@@ -1,4 +1,5 @@
 NEWSCHEMA('TVProgram', function (schema) {
+    const QB = DB();
 
     schema.action('worker_status', {
         name: 'Get TV Worker Status',
@@ -77,7 +78,7 @@ NEWSCHEMA('TVProgram', function (schema) {
     schema.action('get_channels', {
         name: 'Get TV Channels',
         action: function ($) {
-            QB.find('tv_channels').sort('name').callback($.callback);
+            QB.find('tv_channels').sort('name').callback($.callback());
         }
     });
 
@@ -95,7 +96,7 @@ NEWSCHEMA('TVProgram', function (schema) {
             else
                 builder.where('date', NOW);
 
-            builder.sort('start_time').callback($.callback);
+            builder.sort('start_time').callback($.callback());
         }
     });
 
@@ -135,14 +136,14 @@ NEWSCHEMA('TVProgram', function (schema) {
             if ($.query.date)
                 builder.where('date', $.query.date);
             
-            builder.sort('created_at', true).callback($.callback);
+            builder.sort('created_at', true).callback($.callback());
         }
     });
 
     schema.action('get_templates', {
         name: 'Get Templates',
         action: function ($) {
-            QB.find('message_templates').where('service', 'tvprogram').callback($.callback);
+            QB.find('message_templates').where('service', 'tvprogram').callback($.callback());
         }
     });
 
@@ -150,7 +151,7 @@ NEWSCHEMA('TVProgram', function (schema) {
         name: 'Get Template',
         params: 'id:Number',
         action: function ($) {
-            QB.read('message_templates').id($.params.id).callback($.callback);
+            QB.read('message_templates').id($.params.id).callback($.callback());
         }
     });
 
@@ -167,10 +168,10 @@ NEWSCHEMA('TVProgram', function (schema) {
             };
 
             if (model.id) {
-                QB.modify('message_templates', data).id(model.id).callback($.callback);
+                QB.modify('message_templates', data).id(model.id).callback($.callback());
             } else {
                 data.service = 'tvprogram';
-                QB.insert('message_templates', data).callback($.callback);
+                QB.insert('message_templates', data).callback($.callback());
             }
         }
     });

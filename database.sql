@@ -44,3 +44,12 @@ CREATE TABLE IF NOT EXISTS worker_status (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Total.js OpenPlatform config table (used by modules/openplatform.js)
+CREATE TABLE IF NOT EXISTS tbl_config (
+    id VARCHAR(60) PRIMARY KEY,
+    value TEXT,
+    type VARCHAR(50),
+    dtcreated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    dtupdated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

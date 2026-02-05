@@ -1,0 +1,274 @@
+<style>
+	.CLASS .status-badge { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: bold; text-transform: uppercase; }
+	.CLASS .status-running { background-color: #E8F5E9; color: #2E7D32; }
+	.CLASS .status-stopped { background-color: #FFEBEE; color: #C62828; }
+	.CLASS .stats-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+	.CLASS .stat-card { background: #F8F9FA; border-radius: 8px; padding: 15px; border-left: 4px solid #26A69A; }
+	.CLASS .stat-value { font-size: 24px; font-weight: bold; display: block; }
+	.CLASS .stat-label { font-size: 12px; color: #666; text-transform: uppercase; }
+</style>
+
+<ui-plugin config="aclass:1">
+	<header>
+		<label><i class="ti ti-plane blue"></i>@(Flight Companies)</label>
+		<div class="toolbar pin">
+			<button class="exec" data-exec="?/refresh"><i class="ti ti-refresh mr5"></i>@(Refresh)</button>
+			<ui-bind path="?.worker_running" config="template">
+				<script type="text/plain">
+					{{ if value }}
+						<button class="exec" data-exec="?/stop_worker"><i class="ti ti-stop red mr5"></i>@(Stop Worker)</button>
+						<button class="exec" data-exec="?/restart_worker"><i class="ti ti-refresh orange mr5"></i>@(Restart Worker)</button>
+					{{ else }}
+						<button class="exec" data-exec="?/start_worker"><i class="ti ti-play green mr5"></i>@(Start Worker)</button>
+					{{ fi }}
+				</script>
+			</ui-bind>
+		</div>
+	</header>
+
+	<div class="padding">
+		<ui-component name="tabs" path="?.tab" class="invisible">
+			<section data-id="dashboard" title="@(Dashboard)" data-icon="ti ti-layout-dashboard">
+				<div class="flex align-center mb20 space-between bg-smoke padding radius">
+					<div class="flex align-center">
+						<ui-bind path="?.worker_running" config="template">
+							<script type="text/plain">
+								{{ if value }}
+									<span class="status-badge status-running"><i class="ti ti-circle-check-fill mr5"></i>@(Worker Running)</span>
+								{{ else }}
+									<span class="status-badge status-stopped"><i class="ti ti-circle-xmark-fill mr5"></i>@(Worker Stopped)</span>
+								{{ fi }}
+							</script>
+						</ui-bind>
+						<div class="ml20 fs12 gray">
+							<i class="ti ti-info-circle mr5"></i>@(Placeholder flight automation worker.)
+						</div>
+					</div>
+				</div>
+
+				<div class="stats-container">
+					<div class="stat-card">
+						<span class="stat-label">@(Companies)</span>
+						<ui-bind path="?.stats.companies_total" config="text" class="stat-value">0</ui-bind>
+					</div>
+					<div class="stat-card" style="border-left-color: #42A5F5;">
+						<span class="stat-label">@(Routes)</span>
+						<ui-bind path="?.stats.routes_monitored" config="text" class="stat-value">0</ui-bind>
+					</div>
+					<div class="stat-card" style="border-left-color: #EF5350;">
+						<span class="stat-label">@(Errors)</span>
+						<ui-bind path="?.stats.errors" config="text" class="stat-value">0</ui-bind>
+					</div>
+				</div>
+			</section>
+
+			<section data-id="companies" title="@(Companies)" data-icon="ti ti-building">
+				<div class="caption mb10"><i class="ti ti-building mr5"></i>@(Flight Companies)</div>
+				<ui-component name="datagrid" path="?.companies" config="{ checkboxes: false, filter: true, margin: 10 }">
+					<script type="text/plain">
+						[
+							{ name: 'name', text: '@(Name)', width: 200, bold: true },
+							{ name: 'code', text: '@(Code)', width: 100 },
+							{ name: 'country', text: '@(Country)', width: 120 },
+							{ name: 'created_at', text: '@(Created)', width: 140, format: '[date]', align: 'center' }
+						]
+					</script>
+				</ui-component>
+			</section>
+
+			<section data-id="messages" title="@(Notification Queue)" data-icon="ti ti-mail">
+				<div class="flex space-between align-center mb10">
+					<div class="caption"><i class="ti ti-email mr5"></i>@(Generated Notifications)</div>
+					<div class="toolbar pin">
+						<ui-component name="input" path="?.notifications_date" config="type:date;icon:ti ti-calendar;placeholder:@(Filter by date)" class="inline mr10" style="width:150px"></ui-component>
+						<button class="exec" data-exec="?/refresh_notifications"><i class="ti ti-refresh mr5"></i>@(Refresh)</button>
+					</div>
+				</div>
+
+				<ui-component name="datagrid" path="?.notifications" config="{ checkboxes: false, filter: true, margin: 10, click: ?/copy_message_row }">
+					<script type="text/plain">
+						[
+							{ name: 'created_at', text: '@(Generated)', width: 140, format: '[date]', align: 'center' },
+							{ name: 'template', text: '@(Message Content)', width: 500, template: '<div class="fs11 monospace" style="white-space:pre-wrap;line-height:1.2;padding:5px 0">{{ template }}</div>' },
+							{ name: 'sent', text: '@(Status)', width: 100, template: '{{ if sent }}<span class="green"><i class="ti ti-check-circle mr5"></i>Sent</span>{{ else }}<span class="orange"><i class="ti ti-clock mr5"></i>Pending</span>{{ fi }}', align: 'center' },
+							{ name: 'sent_at', text: '@(Sent At)', width: 140, format: '[date]', align: 'center' },
+							{ type: 'controls', width: 80, template: '<button name="copy" title="Copy to clipboard"><i class="ti ti-copy"></i></button>' }
+						]
+					</script>
+				</ui-component>
+				<div class="help mt5">
+					<i class="ti ti-mouse-pointer mr5"></i>@(Click on a row or use the copy button to copy message content to clipboard.)
+				</div>
+			</section>
+
+			<section data-id="templates" title="@(Templates)" data-icon="ti ti-layers">
+				<div class="flex space-between align-center mb10">
+					<div class="caption"><i class="ti ti-layers mr5"></i>@(Message Templates)</div>
+					<button class="exec" data-exec="?/edit_template"><i class="ti ti-plus-circle green mr5"></i>@(Create New Template)</button>
+				</div>
+
+				<ui-component name="datagrid" path="?.templates" config="{ checkboxes: false, filter: false, button: ?/edit_template }">
+					<script type="text/plain">
+						[
+							{ name: 'name', text: '@(Name)', width: 200, bold: true },
+							{ name: 'event_type', text: '@(Event Type)', width: 150, template: '<span class="badge badge-blue">{{ event_type }}</span>' },
+							{ name: 'description', text: '@(Description)', width: 300 },
+							{ name: 'active', text: '@(Active)', width: 80, type: 'boolean', align: 'center' },
+							{ name: 'updated_at', text: '@(Updated)', width: 150, format: '[date]', align: 'center' },
+							{ type: 'controls', template: '<button name="edit" title="Edit template"><i class="ti ti-pencil"></i></button>' }
+						]
+					</script>
+				</ui-component>
+				<div class="help mt5">
+					@(Templates use the <code>@{model.field}</code> syntax for dynamic data injection.)
+				</div>
+			</section>
+		</ui-component>
+	</div>
+</ui-plugin>
+
+<ui-component name="box" path="flightcompany_template_form" config="if:true;title:@(Edit Template);icon:ti ti-layers;autofocus:true;submit:?/submit_template;width:600" class="hidden">
+	<div class="padding">
+		<div class="row">
+			<div class="col-md-8">
+				<ui-component name="input" path="?.form.name" config="required:true;maxlength:100" class="m">@(Template Name)</ui-component>
+			</div>
+			<div class="col-md-4">
+				<ui-component name="input" path="?.form.event_type" config="required:true;maxlength:50;dirsource:status_update|Status Update,route_change|Route Change" class="m">@(Event Type)</ui-component>
+			</div>
+		</div>
+		<ui-component name="textarea" path="?.form.content" config="required:true;height:200;monospace:true;placeholder:@(Enter template content here...)" class="m">@(Template Content)</ui-component>
+		<ui-component name="input" path="?.form.description" config="maxlength:200" class="m">@(Description / Notes)</ui-component>
+		<ui-component name="checkbox" path="?.form.active">@(Template is active and can be used by the worker)</ui-component>
+	</div>
+	<nav>
+		<button name="submit"><i class="ti ti-check-circle"></i>@(Save Template)</button>
+		<button name="cancel">@(Cancel)</button>
+	</nav>
+</ui-component>
+
+<script>
+	PLUGIN(function(exports) {
+
+		exports.reload = function() {
+			BREADCRUMB.add('@(Flight Companies)', NAV.url);
+			exports.refresh();
+		};
+
+		exports.refresh = function() {
+			exports.tapi('flightcompany_worker_status', function(response) {
+				exports.set('worker_running', response.worker_running);
+			});
+
+			exports.tapi('flightcompany_stats', function(response) {
+				if (response && response.data)
+					exports.set('stats', response.data);
+			});
+
+			exports.refresh_companies();
+			exports.refresh_templates();
+			exports.refresh_notifications();
+		};
+
+		exports.refresh_companies = function() {
+			exports.tapi('flightcompany_get_companies', function(response) {
+				exports.set('companies', response || []);
+			});
+		};
+
+		exports.refresh_templates = function() {
+			exports.tapi('flightcompany_get_templates', function(response) {
+				exports.set('templates', response || []);
+			});
+		};
+
+		exports.refresh_notifications = function() {
+			var date = exports.model && exports.model.notifications_date ? exports.model.notifications_date.format('yyyy-MM-dd') : '';
+			exports.tapi('flightcompany_get_notifications?date=' + date, function(response) {
+				exports.set('notifications', response || []);
+			});
+		};
+
+		exports.watch('tab', function() {
+			var id = exports.model.tab;
+			if (id === 'messages') exports.refresh_notifications();
+			if (id === 'templates') exports.refresh_templates();
+			if (id === 'companies') exports.refresh_companies();
+		});
+
+		exports.watch('notifications_date', function() {
+			exports.refresh_notifications();
+		});
+
+		exports.copy_message_row = function(row) {
+			if (row && row.template)
+				exports.copy_to_clipboard(row.template);
+		};
+
+		exports.copy_to_clipboard = function(text) {
+			var textArea = document.createElement('textarea');
+			textArea.value = text;
+			document.body.appendChild(textArea);
+			textArea.select();
+			try {
+				document.execCommand('copy');
+				EXEC('-notify/success', '@(Message copied to clipboard)');
+			} catch (err) {
+				EXEC('-notify/error', '@(Could not copy text)');
+			}
+			document.body.removeChild(textArea);
+		};
+
+		exports.edit_template = function(row) {
+			var form = row || { active: true, event_type: 'status_update' };
+			if (form.template && !form.content) form.content = form.template;
+			exports.set('form', CLONE(form));
+			SETTER('box/show', 'flightcompany_template_form');
+		};
+
+		exports.submit_template = function(hide) {
+			var model = exports.model.form;
+			exports.tapi('flightcompany_save_template', model, function(response) {
+				if (response && response.success) {
+					EXEC('-notify/success', '@(Template saved successfully)');
+					hide();
+					exports.refresh_templates();
+				} else {
+					EXEC('-notify/error', (response && response.error) || '@(Error saving template)');
+				}
+			});
+		};
+
+		exports.start_worker = function() {
+			exports.tapi('flightcompany_start_worker', function(response) {
+				if (response && response.success) {
+					EXEC('-notify/success', response.message);
+					exports.refresh();
+				}
+			});
+		};
+
+		exports.stop_worker = function() {
+			EXEC('-approve/show', '@(Are you sure you want to stop the flight worker?)', '@(Stop)', function() {
+				exports.tapi('flightcompany_stop_worker', function(response) {
+					if (response && response.success) {
+						EXEC('-notify/success', response.message);
+						exports.refresh();
+					}
+				});
+			});
+		};
+
+		exports.restart_worker = function() {
+			EXEC('-approve/show', '@(Are you sure you want to restart the flight worker?)', '@(Restart)', function() {
+				exports.tapi('flightcompany_restart_worker', function(response) {
+					if (response && response.success) {
+						EXEC('-notify/success', response.message);
+						exports.refresh();
+					}
+				});
+			});
+		};
+
+	});
+</script>

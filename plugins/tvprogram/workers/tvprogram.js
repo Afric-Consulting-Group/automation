@@ -17,6 +17,7 @@ const SCRAPE_INTERVAL = 3600000; // 1 hour (default)
 let state = {
     isRunning: false,
     isPaused: false,
+    isScraping: false,
     config: {},
     browser: null,
     stats: {
@@ -41,7 +42,7 @@ async function init(msg) {
             startScheduler();
             startNotificationMonitor();
             // Initial scrape if needed or wait for scheduler
-             scrapeAll();
+             scrapeAll('startup');
         }
         
         await log('info', 'TV Worker initialized');
@@ -76,7 +77,7 @@ function startScheduler() {
     const interval = parseInt(state.config.tvprogram_interval) || SCRAPE_INTERVAL;
     setInterval(() => {
         if (state.isRunning && !state.isPaused) {
-            scrapeAll();
+            scrapeAll('schedule');
         }
     }, interval);
 }
@@ -239,43 +240,55 @@ async function markNotificationSent(content) {
 }
 
 // Main Scrape Function
-async function scrapeAll() {
-    if (state.isScraping) return;
+async function scrapeAll(trigger) {
+    if (state.isScraping) {
+        sendStatus('busy', 'Scrape already running', { trigger: trigger || 'manual' });
+        return;
+    }
     state.isScraping = true;
+    sendStatus('running', 'Starting scrape cycle', { trigger: trigger || 'manual' });
     state.stats.scrapes_attempted++;
     
-    await log('info', 'Starting scrape cycle');
+    await log('info', 'Starting scrape cycle', { trigger: trigger || 'manual' });
 
     try {
         // Launch Puppeteer
+        sendProgress('launch', 'Launching browser');
         state.browser = await puppeteer.launch({
             args: ['--no-sandbox', '--disable-setuid-sandbox'],
             headless: 'new'
         });
 
         // 1. Get Channels to scrape
+        sendProgress('channels', 'Loading channels');
         const channels = await getChannels();
+        sendProgress('channels', `Loaded ${channels.length} channels`);
 
         // 2. Scrape Canal+
         const canalChannels = channels.filter(c => c.source_type === 'canalplus');
         if (canalChannels.length > 0) {
+            sendProgress('canalplus', `Scraping Canal+ (${canalChannels.length} channels)`, { current: 0, total: canalChannels.length, progress: 35 });
             await scrapeCanalPlus(canalChannels);
         }
 
         // 3. Scrape Arte
         const arteChannels = channels.filter(c => c.source_type === 'arte');
         if (arteChannels.length > 0) {
+            sendProgress('arte', `Scraping Arte (${arteChannels.length} channels)`, { current: 0, total: arteChannels.length, progress: 75 });
             await scrapeArte(arteChannels);
         }
 
         state.stats.scrapes_successful++;
         await log('info', 'Scrape cycle completed');
+        sendStatus('idle', 'Scrape cycle completed', { success: true });
 
     } catch (err) {
         state.stats.errors++;
         await log('error', 'Scrape cycle failed', { error: err.message });
+        sendStatus('error', 'Scrape cycle failed', { error: err.message });
     } finally {
         if (state.browser) {
+            sendProgress('cleanup', 'Closing browser');
             await state.browser.close();
             state.browser = null;
         }
@@ -355,7 +368,14 @@ async function scrapeCanalPlus(channels) {
         
         const pageContent = await page.content();
         
+        let index = 0;
         for (const channel of channels) {
+            index++;
+            sendProgress('canalplus', `Scraping ${channel.name} ${index}/${channels.length}`, {
+                current: index,
+                total: channels.length,
+                progress: 35 + Math.round((index / channels.length) * 35)
+            });
             if (pageContent.includes(channel.source_id)) {
                  await log('info', `Found trace of channel ${channel.name} (${channel.source_id}) in source`);
             }
@@ -412,7 +432,14 @@ async function scrapeArte(channels) {
 
         if (programs.length > 0) {
              const channel = channels[0]; // Assuming only one Arte channel
+             let idx = 0;
              for (const prog of programs) {
+                 idx++;
+                 sendProgress('arte', `Scraping ${channel.name} ${idx}/${programs.length}`, {
+                    current: idx,
+                    total: programs.length,
+                    progress: 75 + Math.round((idx / programs.length) * 15)
+                 });
                  await storeProgram({
                      channel_id: channel.id,
                      title: prog.title,
@@ -501,6 +528,7 @@ async function log(level, message, data = {}) {
     // Send to parent
     worker.send({
         type: 'log',
+        service: 'tvprogram',
         level: level,
         message: message,
         data: data,
@@ -519,6 +547,29 @@ async function log(level, message, data = {}) {
     });
 }
 
+function sendProgress(step, message, data = {}) {
+    worker.send({
+        type: 'tvprogram_progress',
+        service: 'tvprogram',
+        step: step,
+        message: message,
+        data: data,
+        progress: data && typeof data.progress === 'number' ? data.progress : undefined,
+        timestamp: new Date()
+    });
+}
+
+function sendStatus(status, message, data = {}) {
+    worker.send({
+        type: 'tvprogram_status',
+        service: 'tvprogram',
+        status: status,
+        message: message,
+        data: data,
+        timestamp: new Date()
+    });
+}
+
 // Message Handler
 worker.message = async function(msg) {
     try {
@@ -529,7 +580,7 @@ worker.message = async function(msg) {
                 await init(msg);
                 break;
             case 'scrape':
-                scrapeAll();
+                scrapeAll('manual');
                 break;
             case 'stop':
                 state.isRunning = false;

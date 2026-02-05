@@ -1,43 +1,42 @@
 {
-	"pid": 2194967,
-	"date": "2026-02-03T16:19:09.977Z",
+	"pid": 32253,
+	"date": "2026-02-04T16:59:00.410Z",
 	"stats": [
 		{
 			"id": "",
 			"version": {
-				"node": "v22.14.0",
+				"node": "v24.12.0",
 				"total": "5",
 				"build": 5015,
 				"app": "1.0.0"
 			},
-			"pid": 2194967,
+			"pid": 32253,
 			"mode": "debug",
 			"overload": 0,
-			"date": "2026-02-03T16:35:11.022Z",
-			"memory": 10.22,
-			"rm": 0,
+			"date": "2026-02-04T17:24:01.608Z",
+			"memory": 16.68,
+			"rm": 3,
 			"fm": 0,
 			"wm": 0,
 			"em": 0,
 			"mm": 0,
 			"om": 0,
 			"dm": 0,
-			"um": 0,
+			"um": 0.002,
 			"pm": 0,
 			"sm": 0,
 			"cm": 0,
 			"dbrm": 0,
 			"dbwm": 0,
 			"usage": 0,
-			"requests": 4,
+			"requests": 118,
 			"pending": 0,
 			"external": 0,
-			"errors": 1,
+			"errors": 0,
 			"timeouts": 0,
-			"online": 0,
-			"download": 0,
-			"upload": 0.004,
-			"lasterror": "2026-02-03T16:19:10.438Z QueryBuilder(tbl_config --> find): relation \"tbl_config\" does not exist\n    at Parser.parseErrorMessage (/root/automation/node_modules/pg-protocol/dist/parser.js:285:98)\n    at Parser.handlePacket (/root/automation/node_modules/pg-protocol/dist/parser.js:122:29)\n    at Parser.parse (/root/automation/node_modules/pg-protocol/dist/parser.js:35:38)\n    at Socket.<anonymous> (/root/automation/node_modules/pg-protocol/dist/index.js:11:42)\n    at Socket.emit (node:events:518:28)\n    at addChunk (node:internal/streams/readable:561:12)\n    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)\n    at Readable.push (node:internal/streams/readable:392:5)\n    at TCP.onStreamRead (node:internal/stream_base_commons:189:23)"
+			"online": 1,
+			"download": 0.003,
+			"upload": 0.08
 		}
 	]
 }

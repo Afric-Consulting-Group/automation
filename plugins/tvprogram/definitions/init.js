@@ -28,6 +28,18 @@ MAIN.initTVWorker = initWorker;
 // Initialize the worker and database at startup
 ON('ready', async function() {
     try {
+        // Ensure notification_queue has "service" column even if table already exists
+        await DATA.query(`
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'notification_queue') THEN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='notification_queue' AND column_name='service') THEN
+            ALTER TABLE notification_queue ADD COLUMN service VARCHAR(50);
+        END IF;
+    END IF;
+END $$;
+        `).promise();
+
         let table = await DATA.check('information_schema.tables').where('table_schema', 'public').where('table_name', 'tv_channels').promise();
         if (!table) {
             let sql = await Total.readfile(PATH.join(__dirname, '../db.sql'), 'utf8');

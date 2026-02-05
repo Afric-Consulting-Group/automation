@@ -3,6 +3,7 @@ exports.name = '@(Football Service)';
 exports.position = 2;
 exports.permissions = [{ id: 'servicefoot', name: 'Football Service' }];
 exports.visible = user => user.sa || user.permissions.includes('servicefoot');
+exports.hidden = true;
 
 exports.install = function() {
 	ROUTE('+API  ?    -servicefoot_worker_status      --> ServiceFoot/worker_status');

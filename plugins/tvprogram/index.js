@@ -1,12 +1,10 @@
-exports.icon = 'ti ti-tv';
+exports.icon = 'ti ti-desktop';
 exports.name = '@(TV Program)';
 exports.position = 3;
 exports.permissions = [{ id: 'tvprogram', name: 'TV Program' }];
 exports.visible = user => user.sa || user.permissions.includes('tvprogram');
 
 exports.install = function() {
-    ROUTE('/tvprogram/', 'index');
-
     ROUTE('+API  ?    -tvprogram_worker_status      --> TVProgram/worker_status');
     ROUTE('+API  ?    -tvprogram_stats              --> TVProgram/stats');
     ROUTE('+API  ?    -tvprogram_get_programs       --> TVProgram/get_programs');

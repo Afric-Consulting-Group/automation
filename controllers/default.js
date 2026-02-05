@@ -3,11 +3,14 @@
 // API ENDPOINTS
 // ============================================================================
 
+if (!MAIN.wsConnections)
+    MAIN.wsConnections = [];
+
 // Get worker status
 exports.install = function() {
     
     // Dashboard page
-    ROUTE('GET /', view_dashboard);
+    // ROUTE('GET /', view_dashboard);
     ROUTE('GET /api/config', api_config);
     ROUTE('POST /api/config', api_config_update);
     // Notifications
@@ -221,7 +224,7 @@ function ws_realtime($) {
     const self = $;
     
     self.on('open', (client) => {
-        wsConnections.push(client);
+        MAIN.wsConnections.push(client);
         
         // Send current status
         client.send(JSON.stringify({
@@ -232,9 +235,9 @@ function ws_realtime($) {
     });
     
     self.on('close', (client) => {
-        const index = wsConnections.indexOf(client);
+        const index = MAIN.wsConnections.indexOf(client);
         if (index > -1) {
-            wsConnections.splice(index, 1);
+            MAIN.wsConnections.splice(index, 1);
         }
     });
     

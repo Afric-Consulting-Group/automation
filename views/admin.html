@@ -9,8 +9,8 @@
 		<meta name="format-detection" content="telephone=no" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<meta name="robots" content="all,follow" />
-		<link href="@{'%cdn'}/spa.min@20.css" rel="stylesheet" />
-		<script src="@{'%cdn'}/spa.min@20.js"></script>
+		<link href="@{'%cdn'}/spa.min@19.css" rel="stylesheet" />
+		<script src="@{'%cdn'}/spa.min@19.js"></script>
 		<script src="@{'%cdn'}/xlsx.min.js"></script>
 		<script src="@{REPO.ui}"></script>
 		@{import('meta', 'head', 'favicon.ico')}
@@ -60,6 +60,7 @@
 			.radius { border-radius: var(--radius); }
 			.inline { position: relative; display: inline-block; }
 
+			.ui-layout-section .padding { padding: 15px; }
 			.ui-columns-col .padding { padding: 15px; }
 			.maxwidth { max-width: 1140px; margin: 0 auto; }
 			.auto { margin: 0 auto; }
@@ -103,6 +104,28 @@
 			.controls button { width: 20px; height: 20px; border: 0; background-color: #FFF; line-height: 20px; padding: 0; border-radius: var(--radius); margin-left: 2px; }
 			.controls button:first-child { margin-left: 0; }
 			.controls button:hover { background-color: #F0F0F0; }
+
+			.menu-toggle {
+				position: fixed;
+				left: 12px;
+				bottom: 12px;
+				width: 42px;
+				height: 42px;
+				border-radius: 21px;
+				border: 0;
+				background-color: var(--color);
+				color: #FFF;
+				z-index: 400;
+				box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+				display: none;
+				align-items: center;
+				justify-content: center;
+				cursor: pointer;
+			}
+			.menu-toggle i { font-size: 18px; }
+			@media (max-width: 1024px) {
+				.menu-toggle { display: flex; }
+			}
 
 			.toolbar .ui-searchinput { float: left; margin-left: 15px; height: 30px; }
 			.toolbar .ui-searchinput input { height: 28px; }
@@ -202,9 +225,8 @@
 			</header>
 
 			@{if repository.menu}
-			<ui-component name="columns" config="parent:window;margin:[margin]" class="hidden invisible">
-
-				<section data-size="@{if CONF.fullmenu}200@{else}66@{fi}">
+			<ui-component name="columns" path="?.columns" config="parent:window;margin:60" class="hidden invisible">
+				<section data-id="left" data-size="@{if CONF.fullmenu}200@{else}66@{fi},0,0,0" data-size-default="@{if CONF.fullmenu}200@{else}66@{fi},0,0,0" data-size-menu="@{if CONF.fullmenu}200@{else}66@{fi},@{if CONF.fullmenu}200@{else}66@{fi},100%,100%">
 					<ui-component name="aselected" path="?.projectid" config="watch:?.projects">
 						<ui-component name="viewbox" config="parent:window;margin:[margin]">
 							<ui-bind path="?.plugins" config="template" child="nav" class="block nav" style="margin-top:15px">
@@ -223,31 +245,48 @@
 						</ui-component>
 					</ui-component>
 				</section>
-				<section>
-			@{fi}
 
-				<ui-bind path="?.plugins" config="template" class="block">
-					<script type="text/html">
-						{{ foreach m in value }}
-							{{ if !m.special }}
-								<ui-component name="page" path="?.page" config="if:plugin{{ m.id }};url:/_{{ m.id }}/index.html;reload:?/reload;hidden:?/hide;id:_{{ m.id }}" class="hidden invisible"></ui-component>
-								{{ if m.routes }}
-									{{ foreach route in m.routes }}
-										{{ if route.html }}
-											<ui-component name="page" path="?.page" config="if:plugin{{ m.id }}{{ route.html }};url:/_{{ m.id }}/{{ route.html }}.html;reload:?/reload;hidden:?/hide;id:_{{ m.id }}" class="hidden invisible"></ui-component>
-										{{ fi }}
-									{{ end }}
+				<section data-id="main">
+					<ui-bind path="?.plugins" config="template" class="block">
+						<script type="text/html">
+							{{ foreach m in value }}
+								{{ if !m.special }}
+									<ui-component name="page" path="?.page" config="if:plugin{{ m.id }};url:/_{{ m.id }}/index.html;reload:?/reload;hidden:?/hide;id:_{{ m.id }}" class="hidden invisible"></ui-component>
+									{{ if m.routes }}
+										{{ foreach route in m.routes }}
+											{{ if route.html }}
+												<ui-component name="page" path="?.page" config="if:plugin{{ m.id }}{{ route.html }};url:/_{{ m.id }}/{{ route.html }}.html;reload:?/reload;hidden:?/hide;id:_{{ m.id }}" class="hidden invisible"></ui-component>
+											{{ fi }}
+										{{ end }}
+									{{ fi }}
 								{{ fi }}
-							{{ fi }}
-						{{ end }}
-					</script>
-				</ui-bind>
-				<ui-component name="page" path="?.page" config="if:pagewelcome;url:/landing.html;reload:?/reload" class="hidden invisible"></ui-component>
-
-			@{if repository.menu}
+							{{ end }}
+						</script>
+					</ui-bind>
+					<ui-component name="page" path="?.page" config="if:pagewelcome;url:/landing.html;reload:?/reload" class="hidden invisible"></ui-component>
 				</section>
 			</ui-component>
+			@{else}
+			<ui-bind path="?.plugins" config="template" class="block">
+				<script type="text/html">
+					{{ foreach m in value }}
+						{{ if !m.special }}
+							<ui-component name="page" path="?.page" config="if:plugin{{ m.id }};url:/_{{ m.id }}/index.html;reload:?/reload;hidden:?/hide;id:_{{ m.id }}" class="hidden invisible"></ui-component>
+							{{ if m.routes }}
+								{{ foreach route in m.routes }}
+									{{ if route.html }}
+										<ui-component name="page" path="?.page" config="if:plugin{{ m.id }}{{ route.html }};url:/_{{ m.id }}/{{ route.html }}.html;reload:?/reload;hidden:?/hide;id:_{{ m.id }}" class="hidden invisible"></ui-component>
+									{{ fi }}
+								{{ end }}
+							{{ fi }}
+						{{ fi }}
+					{{ end }}
+				</script>
+			</ui-bind>
+			<ui-component name="page" path="?.page" config="if:pagewelcome;url:/landing.html;reload:?/reload" class="hidden invisible"></ui-component>
 			@{fi}
+
+			<button type="button" class="menu-toggle" title="@(Menu)" onclick="EXEC('*/togglemenu')"><i class="ti ti-menu-2"></i></button>
 
 			<ui-component name="importer" path="?.form2" config="if:formcode;url:/code.html"></ui-component>
 
@@ -404,6 +443,24 @@
 
 				exports.redirect = function(el) {
 					REDIRECT(el.attrd('url'));
+				};
+
+				exports.togglemenu = function() {
+					var cols = exports.element.find('ui-component[name="columns"]');
+					if (!cols.length)
+						return;
+					var left = cols.find('> section[data-id="left"]');
+					if (!left.length)
+						return;
+
+					var next = model.layout === 'menu' ? '' : 'menu';
+					exports.set('layout', next);
+
+					var size = next === 'menu' ? left.attrd('size-menu') : (left.attrd('size-default') || left.attrd('size'));
+					if (size)
+						left.attr('data-size', size);
+
+					SETTER('columns/refresh');
 				};
 
 				exports.dropfiles = function(e) {

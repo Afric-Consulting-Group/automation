@@ -3,7 +3,7 @@ exports.name = '@(USSD Apps)';
 exports.position = 1;
 exports.permissions = [{ id: 'ussdapp', name: 'USSD App' }];
 exports.visible = user => user.sa || user.permissions.includes('ussdapp');
-
+exports.hidden = true;
 // Routes pour les pages de détails
 exports.routes = [
 	{ url: '/ussdapp/{name}/', html: 'simulator' }

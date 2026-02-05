@@ -46,6 +46,168 @@
 			"method": "API",
 			"url": "/api/",
 			"auth": 1,
+			"id": "flightcompany_worker_status",
+			"name": "Get Flight Worker Status"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"id": "flightcompany_stats",
+			"name": "Get Flight Service Statistics"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"id": "flightcompany_get_companies",
+			"name": "Get Flight Companies"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"id": "flightcompany_get_notifications",
+			"name": "Get Notifications",
+			"query": "date:Date"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"id": "flightcompany_get_templates",
+			"name": "Get Templates"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"id": "flightcompany_get_template",
+			"params": "id:string",
+			"name": "Get Template"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"id": "flightcompany_save_template",
+			"input": "id:Number,name:String,event_type:String,content:String,description:String,active:Boolean",
+			"name": "Save Template"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"params": "id:string",
+			"id": "flightcompany_remove_template",
+			"name": "Remove Template"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"id": "flightcompany_start_worker",
+			"name": "Start Flight Worker"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"id": "flightcompany_stop_worker",
+			"name": "Stop Flight Worker"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"id": "flightcompany_restart_worker",
+			"name": "Restart Flight Worker"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"id": "media_worker_status",
+			"name": "Get Media Worker Status"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"id": "media_stats",
+			"name": "Get Media Service Statistics"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"id": "media_get_companies",
+			"name": "Get Media Companies"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"id": "media_get_notifications",
+			"name": "Get Notifications",
+			"query": "date:Date"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"id": "media_get_templates",
+			"name": "Get Templates"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"params": "id:string",
+			"id": "media_get_template",
+			"name": "Get Template"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"id": "media_save_template",
+			"input": "id:Number,name:String,event_type:String,content:String,description:String,active:Boolean",
+			"name": "Save Template"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"params": "id:string",
+			"id": "media_remove_template",
+			"name": "Remove Template"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"id": "media_start_worker",
+			"name": "Start Media Worker"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"id": "media_stop_worker",
+			"name": "Stop Media Worker"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
+			"id": "media_restart_worker",
+			"name": "Restart Media Worker"
+		},
+		{
+			"method": "API",
+			"url": "/api/",
+			"auth": 1,
 			"id": "servicefoot_worker_status",
 			"name": "Get Football Worker Status"
 		},
@@ -98,8 +260,8 @@
 			"method": "API",
 			"url": "/api/",
 			"auth": 1,
-			"id": "servicefoot_get_template",
 			"params": "id:string",
+			"id": "servicefoot_get_template",
 			"name": "Get Football Service Template by ID"
 		},
 		{
@@ -374,20 +536,12 @@
 		},
 		{},
 		{
-			"method": "GET",
-			"url": "/api/config"
-		},
-		{
 			"method": "POST",
 			"url": "/pipe/"
 		},
 		{
 			"method": "GET",
-			"url": "/"
-		},
-		{
-			"method": "POST",
-			"url": "/api/notifications/retry"
+			"url": "/api/config"
 		},
 		{
 			"method": "POST",
@@ -398,7 +552,8 @@
 			"url": "/api/notifications"
 		},
 		{
-			"url": "/tvprogram/"
+			"method": "POST",
+			"url": "/api/notifications/retry"
 		},
 		{
 			"method": "GET",
@@ -408,12 +563,12 @@
 		{
 			"method": "GET",
 			"url": "/*",
-			"auth": 2
+			"auth": 1
 		},
 		{
 			"method": "GET",
 			"url": "/*",
-			"auth": 1
+			"auth": 2
 		},
 		{
 			"method": "SOCKET",
@@ -424,6 +579,16 @@
 		{
 			"id": "account",
 			"name": "@(Account)"
+		},
+		{
+			"id": "flightcompany",
+			"name": "@(Flight Companies)",
+			"permissions": "flightcompany"
+		},
+		{
+			"id": "media",
+			"name": "@(Media Companies)",
+			"permissions": "media"
 		},
 		{
 			"id": "servicefoot",
@@ -479,6 +644,80 @@
 		{
 			"name": "Logout",
 			"user": true
+		},
+		{
+			"name": "FlightCompany/worker_status"
+		},
+		{
+			"name": "FlightCompany/stats"
+		},
+		{
+			"name": "FlightCompany/restart_worker"
+		},
+		{
+			"name": "FlightCompany/stop_worker"
+		},
+		{
+			"name": "FlightCompany/start_worker"
+		},
+		{
+			"name": "FlightCompany/get_companies"
+		},
+		{
+			"name": "FlightCompany/get_notifications",
+			"query": "date:Date"
+		},
+		{
+			"name": "FlightCompany/get_templates"
+		},
+		{
+			"name": "FlightCompany/get_template",
+			"params": "id:Number"
+		},
+		{
+			"name": "FlightCompany/save_template",
+			"input": "id:Number,name:String,event_type:String,content:String,description:String,active:Boolean"
+		},
+		{
+			"name": "FlightCompany/remove_template",
+			"params": "id:Number"
+		},
+		{
+			"name": "Media/worker_status"
+		},
+		{
+			"name": "Media/stats"
+		},
+		{
+			"name": "Media/restart_worker"
+		},
+		{
+			"name": "Media/stop_worker"
+		},
+		{
+			"name": "Media/start_worker"
+		},
+		{
+			"name": "Media/get_companies"
+		},
+		{
+			"name": "Media/get_notifications",
+			"query": "date:Date"
+		},
+		{
+			"name": "Media/get_templates"
+		},
+		{
+			"name": "Media/get_template",
+			"params": "id:Number"
+		},
+		{
+			"name": "Media/save_template",
+			"input": "id:Number,name:String,event_type:String,content:String,description:String,active:Boolean"
+		},
+		{
+			"name": "Media/remove_template",
+			"params": "id:Number"
 		},
 		{
 			"name": "ServiceFoot/worker_status"

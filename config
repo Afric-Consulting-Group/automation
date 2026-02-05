@@ -1,5 +1,6 @@
-name                : Football Live Score Monitor
+name                : ACG Devs - Services automatisations
 version             : 1.0.0
-database            : postgres://total:platform@localhost:5432/automationapp
+database            : postgres://total:platform@zapwize.com:/automationapp
 secret            (generate)  : 10
-
+truncate_on_Fstart : true
+fullmenu : true
